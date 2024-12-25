@@ -91,4 +91,5 @@ The app is made up of the following components:
     * Cool-off params should be configurable.
     * Fully master and leverage ZIO features.
     * Dockerization and cloud readiness.
-    * Streaming 
+    * Streaming
+    * Observability / Metrics
