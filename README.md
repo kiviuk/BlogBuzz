@@ -1,4 +1,4 @@
-# BlogBuzz
+I'm# BlogBuzz
 
 A ZIO-based web application featuring WebSocket functionality.
 
@@ -91,3 +91,4 @@ The app is made up of the following components:
     * Cool-off params should be configurable.
     * Fully master and leverage ZIO features.
     * Dockerization and cloud readiness.
+    * Streaming 
