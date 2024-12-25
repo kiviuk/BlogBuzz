@@ -1,0 +1,12 @@
+crawler:
+  host: xhttps://test-wptavern.com
+  apiPath: wp-json/wp/v2/posts
+  perPage: 1000
+
+scheduler:
+  intervalInSec: 1
+  startDateGmt: "2024-12-23T00:00:00Z"
+
+websocket:
+  port: 88080
+  subscribePath: "ws://localhost:${port}/subscribe/v1"

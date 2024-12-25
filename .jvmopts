@@ -1,0 +1,11 @@
+-Xms1G
+-Xmx10G
+-XX:+UseG1GC
+-XX:MaxGCPauseMillis=200
+-XX:ParallelGCThreads=4
+-XX:ConcGCThreads=4
+-Dsbt.log.noformat=true
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/tmp
+-Dsbt.color=always
+-Dsbt.supershell=false

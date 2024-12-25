@@ -1,0 +1,14 @@
+# The crawler config
+crawler:
+  host: https://test-wptavern.com
+  apiPath: wp-json/wp/v2/posts
+  perPage: 10
+
+# The scheduler config
+scheduler:
+  intervalInSec: 1 # wordpress crawler will run every intervalInSec seconds
+  startDateGmt: "2024-12-23T00:00:00Z" # wordpress crawler will load posts starting from this date
+
+websocket:
+  port: 8888
+  subscribePath: "ws://localhost:${port}/subscribe/v1"

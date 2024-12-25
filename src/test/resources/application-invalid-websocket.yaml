@@ -1,0 +1,10 @@
+crawler:
+  host: http://example.com
+  apiPath: /api/posts
+  perPage: 50
+scheduler:
+  intervalInSec: 1
+  startDateGmt: "2024-12-23T00:00:00Z"
+websocket:
+  port: 88080
+  subscribePath: "localhost:8888/subscribe"

@@ -1,0 +1,4 @@
+{crawler:
+host: https://test-wptavern.com
+apiPath: wp-json/wp/v2/posts
+perPage: 10
