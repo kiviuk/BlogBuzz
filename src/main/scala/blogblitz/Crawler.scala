@@ -10,7 +10,7 @@ import zio.http.{ Response, Status }
 
 // Crawler that fetches blog posts from a WordPress site and publishes them to a WebSocket server.
 // Uses pagination to fetch posts.
-// Posts are fetched concurrently.
+// Pages are fetched concurrently.
 // https://developer.wordpress.org/rest-api/reference/posts/
 // https://developer.wordpress.org/rest-api/using-the-rest-api/pagination/
 object Crawler {
@@ -95,16 +95,6 @@ object Crawler {
           .scoped(client.request(req))
           .timeout(timeoutDuration)
 
-        // response <- response match {
-        //   case Some(value) => ZIO.succeed(value)
-        //   case None =>
-        //     ZIO.fail(
-        //       new TimeoutException(
-        //         s"Crawler timed out after timeoutDuration = ${timeoutDuration.toSeconds()} sec for URL: $url"
-        //       )
-        //     )
-        // }
-
         response <- response match {
           case Some(value) => ZIO.succeed(value) // Use the response if it completes within the timeout
           case None =>
@@ -126,12 +116,12 @@ object Crawler {
         // Fetch posts from other pages concurrently if applicable
         otherPagePostsFiber <-
           if page == FIRST_PAGE && totalPages > FIRST_PAGE then
-            // Start fetching other pages in a separate fiber
+            // Start fetching remaining pages recursively on separate fibers
             ZIO
               .collectAllPar((2 to totalPages).map { p =>
                 fetchAndPublishPostsSinceGmt(sinceTimestamp, publishingBlogPostHub, p)
               })
-              .fork // run concurrently
+              .fork // good luck
           else
             ZIO.succeed(
               Fiber.succeed(List.empty[List[BlogPost]].toIndexedSeq)

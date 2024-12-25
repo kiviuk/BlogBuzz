@@ -15,7 +15,6 @@ import java.time.Instant
  */
 object BlogBlitzMachine extends ZIOAppDefault {
   val QUEUE_CAPACITY = 100
-  val PERIOD         = 5.seconds
 
   val PATH_SEPARATOR = "/"
 
@@ -110,7 +109,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
           s"Invalid subscribe path: ${config.subscribePath.value}"
         )
 
-    // serve http://host:port/static/blogbuzz.html
+    // e.g.: serve http://host:port/static/blogbuzz.html from the resources/webapp
     (routes @@ Middleware.serveResources(RESOURCES_PATH, RESOURCES_WEBAPP_PATH)).sandbox
   }
 
@@ -137,7 +136,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     } yield fiber
   }
 
-  // Event queue ensures work items are processed sequentially in the order they are added
+  // Event queue ensures work items are processed sequentially in the order they are added (emits heartbeat)
   def timeStampEmitter(
     eventQueue: Queue[TimestampEvent],
     crawlMetaData: BlogPostMeta.CrawlMetadata,
@@ -146,7 +145,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     val emitTimestamp = (for {
       // Keep the queue free of noisy events.
       // Only submit events, if crawler is free.
-      // see: ZIO CyclicBarrier
+      // todo: repl ace with ZIO CyclicBarrier
       state <- crawlMetaData.getCrawlStatus
       _ <- ZIO.unless(state.isCrawling) {
         for {
@@ -161,7 +160,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
         } yield ()
       }
 
-      // back off strategy, better use ZIO scheduler
+      // back off strategy based on runtime condition, better use ZIO scheduler?
       size <- crawlMetaData.getCrawlSize
       lowEffortKindOfWorkingBackOffStrategy = size.crawlSize == 0
       coolOff                               = if (lowEffortKindOfWorkingBackOffStrategy) 3 else 1
@@ -177,7 +176,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
     emitTimestamp.repeatN(1).unit
 
-    // Repeat emitTimestamp with runtime-aware scheduling logic
+    // Repeat emitTimestamp with backoff logic
     // emitTimestamp
     //   .flatMap { coolOff =>
     //     // Choose backoff delay based on crawl size
@@ -188,7 +187,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
   }
 
-  // Listens for timestamp events and
+  // Listens for timestamp events (heartbeat) and
   // fetches blog posts starting from that timestamp.
   // To guarantee instant delivery, posts are forwarded to
   // the outbound websocket hub by the crawler service.
@@ -206,6 +205,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
       // Turn on crawling mode (so others will know when crawling is in progress)
       _ <- crawlMetaData.activateCrawling
 
+      // Call the CrawlerService
       posts <- crawlerService
         .fetchAndPublishPostsSinceGmt(event.sinceTimestampGmt, publishingBlogPostHub)
         .foldZIO(
@@ -230,7 +230,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
       // At this point, the crawler has collected all
       // blog posts for the given timestamp,
-      // the most recent to become the next start timestamp
+      // the most recent determines the next start timestamp
       lastModifiedGmt = posts
         .map(_.modifiedDateGmt.value)
         .maxOption
@@ -250,7 +250,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
   override def run = {
 
-    // TODO: automatically wait for some websocket client to connect before running the crawler
+    // TODO: automatically wait for some websocket client to connect before running the crawler?
     val program = for {
       timestampQueue  <- Queue.bounded[TimestampEvent](QUEUE_CAPACITY)
       blogPostHub     <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)

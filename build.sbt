@@ -24,9 +24,6 @@ lazy val root = (project in file("."))
   .settings(
     name := "BlogBlitz",
     libraryDependencies ++= Seq(
-      // SCALA
-      "org.scala-lang.modules" %% "scala-parallel-collections" % "1.1.0",
-
       // ZIO
       "dev.zio" %% "zio"         % zioVersion,
       "dev.zio" %% "zio-streams" % zioVersion,

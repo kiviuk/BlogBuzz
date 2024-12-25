@@ -10,9 +10,8 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
   private val QUEUE_CAPACITY = 256
 
   private val TestTimeout       = 10.seconds
-  private val TimestampInterval = BlogBlitzMachine.PERIOD
-
-  private val testTime = "2024-01-01T00:00:00Z"
+  private val TimestampInterval = 5.seconds
+  private val testTime          = "2024-01-01T00:00:00Z"
 
   private val sinceTimestampGmt = Instant.parse(testTime)
 
