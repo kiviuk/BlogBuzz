@@ -71,7 +71,6 @@ The app is made up of the following components:
 1. **Security**
 
     - WebSocket connections are currently unsecured. Authentication and authorization mechanisms should be added to prevent unauthorized access.
-ß
 
 2. **Performance Monitoring**
 
