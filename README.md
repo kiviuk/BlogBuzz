@@ -48,7 +48,7 @@ A ZIO-based web application featuring WebSocket functionality.
  
     - Main configuration options:
         - **intervalInSec**: the interval at which the WordPress backend is polled for new posts.
-        - **startDateGmt**: Lower bound date for fetching posts.
+        - **startDateGmt**: the initial lower bound date for fetching posts.
         - **port**: Port for the WebSocket and HTTP server.
         - **subscribePath**: WebSocket subscription path. 
         - **subscribePath** is also hardcoded in `src/main/resources/webapp/blogbuzz.html`
