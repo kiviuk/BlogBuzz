@@ -77,7 +77,7 @@ The app is made up of the following components:
     - GC performance and memory usage needs (more) testing.
     - JSON conversion could benefit from upickle to improve speed and memory efficiency.
     - Handling of server side rate limiting.
-ß
+      
 3. **Persistence**
 
     * Currently, the server does not maintain any state beyond its in-memory storage.
@@ -85,11 +85,11 @@ The app is made up of the following components:
 
 4. **Miscellaneous**    
 
-    * Replace custom code with standard libraries (configuration management, validation).
+    * Replace custom code with standard libraries (eg configuration management, validation).
     * Support for exponential/predictive cool-off strategy.
     * Cool-off params should be configurable.
     * Fully master and leverage ZIO features.
     * Dockerization and cloud readiness.
     * Streaming
     * Observability / Metrics
-    * Support schema evolution (v1, v2) using zio schema 
+    * Support schema evolution (v1 -> v2) using ZIO Schema 
