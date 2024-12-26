@@ -93,3 +93,4 @@ The app is made up of the following components:
     * Dockerization and cloud readiness.
     * Streaming
     * Observability / Metrics
+    * Support schema evolution (v1, v2) using zio schema 
