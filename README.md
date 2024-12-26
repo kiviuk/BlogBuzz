@@ -1,4 +1,4 @@
-I'm# BlogBuzz
+I'm BlogBuzz
 
 A ZIO-based web application featuring WebSocket functionality.
 
