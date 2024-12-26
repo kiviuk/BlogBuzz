@@ -27,7 +27,7 @@ A ZIO-based web application featuring WebSocket functionality.
 9. Hit **ENTER** again to stop crawling and stop the server at any time.
 
 ## What's happening?
-1. Messages / blog post data will appear in the browser in real time as they are received from the WebPress backend.
+1. Messages / blog post data will appear in the browser in real time as they are received from the WordPress backend.
 2. Incoming messages will display the word count map (top 10) as well as additional metadata related to the blogpost. The browser will automatically sort incoming messages by the WordPress post modifiedDateGmt.
 3. Run `wscat -c ws://localhost:8888/subscribe/v1 | tee output.txt` from your terminal to additionally receive the `unsorted JSON data`.
 4. The crawler is tested and configured to fetch items from https://wptavern.com.
