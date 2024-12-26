@@ -64,7 +64,7 @@ The app is made up of the following components:
 
    - Note: the scheduler stops emitting events when the crawler is in progress to prevent running 2 crawlers at  the same time, but mainly to demonstrate how fibers can react to each other.
    - Note: while there is only 1 CrawlerService active at any time, the CrawlerService itself uses multiple threads/fibers to concurrently fetch blog posts leveraging the WordPress pagination API. The 'complexity' of the crawler is hidden away from the rest of the application logic.
-   - There is one data transfer object for the inbound blog post and one for the outbound blog post. The latter  automatically converts between the 2 and also provides the sorted word-count map.
+   - There is one data transfer object for the inbound blog post and one for the outbound blog post. The former automatically converts between the 2 and also provides the sorted word-count map.
 
 ## Future Improvements
 
