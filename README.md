@@ -31,7 +31,7 @@ A ZIO-based web application featuring WebSocket functionality.
 2. Incoming messages will display the word count map (top 10) as well as additional metadata related to the blogpost. The browser will automatically sort incoming messages by the WordPress post modifiedDateGmt.
 3. Run `wscat -c ws://localhost:8888/subscribe/v1 | tee output.txt` from your terminal to additionally receive the `unsorted JSON data`.
 4. The crawler is tested and configured to fetch items from https://wptavern.com.
-5. After all messages have been consumed by the backend, polling for new messages enters a 'cooling' period. Polling will occur once every 30 seconds, compared to every 10 seconds. An additional ping post will be published every 30 seconds (3 * scheduler.intervalInSec) as long as there are no new blog posts. This is to prevent the server connection from shutting down and to keep the UI action happening. You can see the latest ping post coming in on top of the list in the browser.
+5. After all messages have been consumed by the backend, polling for new messages enters a 'cooling' period. Polling will occur once every 30 seconds (= 3 * scheduler.intervalInSec), compared to every 10 seconds (= scheduler.intervalInSec). An additional ping post will be published every 30 seconds as long as there are no new blog posts. This is to prevent the server connection from shutting down and to keep the UI action happening. You can see the latest ping post coming in on top of the list in the browser.
 
 # Files
 
