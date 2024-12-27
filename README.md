@@ -68,22 +68,27 @@ The app is made up of the following components:
 
 ## Future Improvements
 
-1. **Security**
+1. **Features**
+    - Add support for a REST endpoint to fetch historic blog posts.
+    - Use websockets to push only new blog posts to clients.
+    - Explore webhooks/websub alternatives for notifying clients of new blog posts.
+    
+2. **Security**
 
     - WebSocket connections are currently unsecured. Authentication and authorization mechanisms should be added to prevent unauthorized access.
 
-2. **Performance Monitoring**
+3. **Performance Monitoring**
 
     - GC performance and memory usage needs (more) testing.
     - JSON conversion could benefit from upickle to improve speed and memory efficiency.
     - Handling of server side rate limiting.
       
-3. **Persistence**
+4. **Persistence**
 
     * Currently, the server does not maintain any state beyond its in-memory storage.
     * Integration with a distributed database or cache system is mandatory in a cloud environment.
 
-4. **Miscellaneous**    
+5. **Miscellaneous**    
 
     * Replace custom code with standard libraries (eg configuration management, validation).
     * Support for exponential/predictive cool-off strategy.
