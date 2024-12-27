@@ -13,7 +13,7 @@ A ZIO-based web application featuring WebSocket functionality.
 - Scala 3.6.2
 - ZIO 2.1.9
 - openjdk 17.0.9
-- Thorium
+- Thorium (release 8)
 
 ## How to use
 
