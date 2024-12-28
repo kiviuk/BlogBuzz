@@ -6,8 +6,9 @@ crawler:
 
 # The scheduler config
 scheduler:
-  intervalInSec: 10 # wordpress crawler will wake up every intervalInSec, if feasible
-  startDateGmt: "2020-11-01T00:00:00Z" # wordpress crawler will load posts starting from this date
+  intervalInSec: 20 # wordpress crawler will wake up every intervalInSec, if feasible
+  startDateGmt: "2023-01-01T00:00:00Z" # wordpress crawler will load posts starting from this date
+  maxCoolDownScale: 3
 
 # The websocket config
 websocket:

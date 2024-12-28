@@ -61,7 +61,11 @@ object Crawler {
         client = baseClient.batched
 
         // Construct the full URL with the path and query parameters
-        // note: Strict ordering loses significance for parallel page requests
+        // Note 1: Strict ordering loses significance for parallel page requests
+        // Note 2: Technically, at any timestamp boundary, a blog item could be fetched twice
+        // Once as the youngest item from the previous batch and again as the oldest item in the current batch.
+        // But better to eventually deduplicate data than to miss it.
+        // [depending on the implementation of the API (>= or >). But WordPress API is >]
         url = createUrl(baseUrl, config.apiPath.value)
           .addQueryParam(PER_PAGE, config.perPage.toString)
           .addQueryParam(AFTER, sinceTimestamp.toString)
@@ -173,7 +177,7 @@ trait CrawlerService {
   def fetchAndPublishPostsSinceGmt(
     sinceTimestamp: Instant,
     publishingBlogPostHub: Hub[WordPressApi.BlogPost],
-  ): ZIO[Client & CrawlerConfig, Throwable, List[BlogPost]]
+  ): ZIO[Client & CrawlerConfig, Throwable, List[WordPressApi.BlogPost]]
 
 }
 

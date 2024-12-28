@@ -6,6 +6,7 @@ crawler:
 scheduler:
   intervalInSec: 1
   startDateGmt: "2024-12-23T00:00:00Z"
+  maxCoolDownScale: 3
 
 websocket:
   port: 88080

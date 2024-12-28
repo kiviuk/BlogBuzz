@@ -14,11 +14,11 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
         for {
           meta          <- ZIO.service[BlogPostMeta.CrawlMetadata]
           initialTime   <- meta.getLastModifiedGmt
-          initialStatus <- meta.getCrawlStatus
+          initialStatus <- meta.isCrawling
         } yield assertTrue(
           // set a time barrier 2 days in the past for fetching, to avoid too many requests
           initialTime.isBefore(Instant.now()),
-          initialStatus == BlogPostMeta.CrawlState(false),
+          initialStatus == false,
         )
       },
       test("should update last fetched time") {
@@ -32,34 +32,27 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
       test("should update crawling status") {
         for {
           meta   <- ZIO.service[BlogPostMeta.CrawlMetadata]
-          _      <- meta.setCrawlingStatus(true)
-          status <- meta.getCrawlStatus
-        } yield assertTrue(status == BlogPostMeta.CrawlState(true))
-      },
-      test("should update crawling size") {
-        for {
-          meta <- ZIO.service[BlogPostMeta.CrawlMetadata]
-          _    <- meta.setCrawlSize(10)
-          size <- meta.getCrawlSize
-        } yield assertTrue(size.crawlSize == 10)
+          _      <- meta.activateCrawling
+          status <- meta.isCrawling
+        } yield assertTrue(status == true)
       },
       test("should handle multiple updates atomically") {
         for {
           meta <- ZIO.service[BlogPostMeta.CrawlMetadata]
           now = Instant.now()
           fiber1  <- meta.setLastModifiedGmt(now).fork
-          fiber2  <- meta.setCrawlingStatus(true).fork
-          fiber3  <- meta.setCrawlingStatus(false).fork
+          fiber2  <- meta.activateCrawling.fork
+          fiber3  <- meta.deactivateCrawling.fork
           _       <- fiber1.join
           _       <- fiber2.join
           _       <- fiber3.join
           time    <- meta.getLastModifiedGmt
-          status1 <- meta.getCrawlStatus
-          status2 <- meta.getCrawlStatus
+          status1 <- meta.isCrawling
+          status2 <- meta.isCrawling
         } yield assertTrue(
           time == now,
-          status1 == BlogPostMeta.CrawlState(false),
-          status2 == BlogPostMeta.CrawlState(false),
+          status1 == false,
+          status2 == false,
         )
       },
       test("should maintain independent state for time and status") {
@@ -67,14 +60,14 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
           meta <- ZIO.service[BlogPostMeta.CrawlMetadata]
           time1 = Instant.now().minusSeconds(3600)
           _ <- meta.setLastModifiedGmt(time1)
-          _ <- meta.setCrawlingStatus(true)
+          _ <- meta.activateCrawling
           time2 = time1.plusSeconds(60)
           _           <- meta.setLastModifiedGmt(time2)
           finalTime   <- meta.getLastModifiedGmt
-          finalStatus <- meta.getCrawlStatus
+          finalStatus <- meta.isCrawling
         } yield assertTrue(
           finalTime == time2,
-          finalStatus == BlogPostMeta.CrawlState(true),
+          finalStatus == true,
         )
       },
       test("should throw an error when setting a future timestamp") {
@@ -97,26 +90,6 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
               }
             ),
           finalTime == pastTime,
-        )
-      },
-      test("should throw an error when setting negative size") {
-        for {
-          meta <- ZIO.service[BlogPostMeta.CrawlMetadata]
-          initialSize = 10
-          _ <- meta.setCrawlSize(initialSize)
-          negativeSize = -1
-          result    <- meta.setCrawlSize(negativeSize).exit
-          finalSize <- meta.getCrawlSize
-        } yield assertTrue( // all must be true
-          result.isFailure,
-          result
-            .causeOption
-            .exists(cause =>
-              cause.dieOption.exists { throwable =>
-                throwable.getMessage == s"Crawl size $negativeSize cannot be negative"
-              }
-            ),
-          finalSize.crawlSize == initialSize,
         )
       },
     )

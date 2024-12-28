@@ -8,55 +8,80 @@ import java.time.temporal.ChronoUnit.*
 /*
  * Tracks crawl metadata
  */
-object BlogPostMeta:
-  trait CrawlMetadata:
+object BlogPostMeta {
+  object CrawlStateEvaluator {
+    def successful(state: PreviousCrawlState): Boolean =
+      state == PreviousCrawlState.Successful || state == PreviousCrawlState.NotYetCrawled
+    def unsuccessful(state: PreviousCrawlState): Boolean = !successful(state)
+
+  }
+  enum PreviousCrawlState {
+    case NotYetCrawled extends PreviousCrawlState
+    case Successful    extends PreviousCrawlState
+    case Empty         extends PreviousCrawlState
+    case Failure       extends PreviousCrawlState
+
+  }
+
+  case class CrawlState(
+    val isCrawling: Boolean,
+    val previousCrawlState: PreviousCrawlState = PreviousCrawlState.NotYetCrawled)
+  case class CrawlSize(crawlSize: Int)
+
+  trait CrawlMetadata {
     def getLastModifiedGmt: UIO[Instant]
     // tracks the most recent blog post modification time of the current crawl
     def setLastModifiedGmt(time: Instant): UIO[Unit]
     // notifies that crawling is underway
-    def getCrawlStatus: UIO[CrawlState]
-    def setCrawlingStatus(isCrawling: Boolean): UIO[Unit]
-    // shortcuts for activating and deactivating crawling
     def activateCrawling: UIO[Unit]
     def deactivateCrawling: UIO[Unit]
-    // how many blog posts have been fetched
-    def setCrawlSize(crawlSize: Int): UIO[Unit]
-    def getCrawlSize: UIO[CrawlSize]
+    // query whether crawling is in progress
+    def isCrawling: UIO[Boolean]
+    // tracks the latest crawl state
+    def setPreviousCrawlState(previousCrawlState: PreviousCrawlState): UIO[Unit]
+    def getPreviousCrawlState: UIO[PreviousCrawlState]
+
+  }
 
   class CrawlMetadataRepository(
     crawlStateRef: Ref[CrawlState],
-    crawlSizeRef: Ref[CrawlSize],
     lastModifiedGmtRef: Ref[Instant])
-      extends CrawlMetadata:
+      extends CrawlMetadata {
     def getLastModifiedGmt: UIO[Instant] = lastModifiedGmtRef.get
     def setLastModifiedGmt(time: Instant): UIO[Unit] =
       ZIO.when(time.isAfter(Instant.now()))(
         ZIO.dieMessage(s"Cannot set a future timestamp $time")
       ) *>
         lastModifiedGmtRef.set(time)
-    def getCrawlStatus: UIO[CrawlState] = crawlStateRef.get
+
+    def getCrawlState: UIO[CrawlState] = crawlStateRef.get
     def setCrawlingStatus(isCrawling: Boolean): UIO[Unit] =
       crawlStateRef.update(_.copy(isCrawling = isCrawling))
+
+    // shortcuts for activating and deactivating crawling
     def activateCrawling: UIO[Unit]   = setCrawlingStatus(true)
     def deactivateCrawling: UIO[Unit] = setCrawlingStatus(false)
-    def setCrawlSize(crawlSize: Int): UIO[Unit] =
-      ZIO.when(crawlSize < 0)(ZIO.dieMessage(s"Crawl size $crawlSize cannot be negative")) *>
-        crawlSizeRef.update(_.copy(crawlSize = crawlSize))
-    def getCrawlSize: UIO[CrawlSize] = crawlSizeRef.get
 
-  case class CrawlState(isCrawling: Boolean)
-  case class CrawlSize(crawlSize: Int)
+    def isCrawling: UIO[Boolean] = crawlStateRef.get.map(_.isCrawling)
+
+    def setPreviousCrawlState(previousCrawlState: PreviousCrawlState): UIO[Unit] =
+      crawlStateRef.update(_.copy(previousCrawlState = previousCrawlState))
+
+    def getPreviousCrawlState: UIO[PreviousCrawlState] =
+      crawlStateRef.get.map(_.previousCrawlState)
+
+  }
 
   val layer: ZLayer[BlogBlitzConfig.SchedulerConfig, Nothing, CrawlMetadata] =
     ZLayer.fromZIO(
       for
         schedulerConfig    <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
         crawlStateRef      <- Ref.make[CrawlState](CrawlState(false))
-        crawlSizeRef       <- Ref.make[CrawlSize](CrawlSize(0))
         lastModifiedGmtRef <- Ref.make[Instant](schedulerConfig.startDateGmt)
       yield new CrawlMetadataRepository(
         crawlStateRef,
-        crawlSizeRef,
         lastModifiedGmtRef,
       )
     )
+
+}

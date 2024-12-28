@@ -51,42 +51,55 @@ lazy val root = (project in file("."))
   )
 
 // SBT convinience aliases
-addCommandAlias(
+commands += Command.command("cls") { state =>
+  print("\033c")
+  state
+}
+
+def withCls(alias: String, command: String) =
+  addCommandAlias(alias, s"cls; $command")
+
+withCls(
   "cov",
   "set coverageEnabled := true; clean; coverage; test; coverageReport; coverageAggregate",
 )
 
 // fixme
-addCommandAlias(
+withCls(
   "f",
   "reload; clean; update",
 )
 
-addCommandAlias(
+withCls(
   "c",
   "compile; test:compile",
 )
-addCommandAlias(
+withCls(
   "t",
   "test",
 )
 
-addCommandAlias(
+withCls(
   "tc",
   "test:compile",
 )
 
-addCommandAlias(
+withCls(
   "s",
   "scalafmt",
 )
 
-addCommandAlias(
+withCls(
   "r",
   "reload",
 )
 
-addCommandAlias(
+withCls(
+  "x",
+  "run",
+)
+
+withCls(
   "s",
   "scalafix RemoveUnused;" +
     " scalafix OrganizeImports;" +

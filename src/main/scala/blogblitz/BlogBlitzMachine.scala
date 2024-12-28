@@ -18,7 +18,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
   val PATH_SEPARATOR = "/"
 
-  val RESOURCES_PATH = Path.empty / "static"
+  val STATIC_URL_PATH = Path.empty / "static"
 
   val RESOURCES_WEBAPP_PATH = "webapp"
 
@@ -109,8 +109,8 @@ object BlogBlitzMachine extends ZIOAppDefault {
           s"Invalid subscribe path: ${config.subscribePath.value}"
         )
 
-    // e.g.: serve http://host:port/static/blogbuzz.html from the resources/webapp
-    (routes @@ Middleware.serveResources(RESOURCES_PATH, RESOURCES_WEBAPP_PATH)).sandbox
+    // e.g.: serve http://host:port/static/blogbuzz.html from resources/webapp
+    (routes @@ Middleware.serveResources(STATIC_URL_PATH, RESOURCES_WEBAPP_PATH)).sandbox
   }
 
   // Starts the WebSocket server
@@ -142,16 +142,16 @@ object BlogBlitzMachine extends ZIOAppDefault {
     crawlMetaData: BlogPostMeta.CrawlMetadata,
     schedulerConfig: BlogBlitzConfig.SchedulerConfig,
   ): ZIO[Any, Nothing, Unit] = {
-    val emitTimestamp = (for {
-      // Keep the queue free of noisy events.
+    import BlogPostMeta._
+    (for {
+      // Keep the queue free from noise.
       // Only submit events, if crawler is free.
       // todo: replace with ZIO CyclicBarrier
-      state <- crawlMetaData.getCrawlStatus
-      _ <- ZIO.unless(state.isCrawling) {
+      isCrawling <- crawlMetaData.isCrawling
+
+      _ <- ZIO.unless(isCrawling) {
         for {
-          // Technically, at any timestamp boundary, a blog item could be fetched twice.
-          // Once as the youngest item from the previous batch and again as the oldest item in the current batch.
-          // But better to eventually deduplicate data than to miss it.
+          // Emit next timestamp event
           mostRecentBlogPostDate <- crawlMetaData.getLastModifiedGmt
           _                      <- eventQueue.offer(TimestampEvent(mostRecentBlogPostDate))
           _ <- ZIO.logInfo(
@@ -160,30 +160,20 @@ object BlogBlitzMachine extends ZIOAppDefault {
         } yield ()
       }
 
-      // back off strategy based on runtime condition, better use ZIO scheduler?
-      size <- crawlMetaData.getCrawlSize
-      lowEffortKindOfWorkingBackOffStrategy = size.crawlSize == 0
-      coolOff                               = if (lowEffortKindOfWorkingBackOffStrategy) 3 else 1
+      previousCrawlState <- crawlMetaData.getPreviousCrawlState
 
+      // back off strategy, better use ZIO scheduler?
+      lowEffortKindOfWorkingBackOffStrategy = CrawlStateEvaluator.unsuccessful(previousCrawlState)
+
+      maxCoolDownScale = schedulerConfig.maxCoolDownScale
+      cooldownScale    = if (lowEffortKindOfWorkingBackOffStrategy) maxCoolDownScale else 1
+      pauseDuration    = schedulerConfig.toDuration.multipliedBy(cooldownScale)
       _ <- ZIO.when(lowEffortKindOfWorkingBackOffStrategy)(
         ZIO.logInfo("Entering cooldown mode since no new data has been crawled.")
       )
 
-      _ <- ZIO.sleep(schedulerConfig.toDuration.multipliedBy(coolOff)).unit
-    } yield ()).forever /* coolOff */
-
-    // emitTimestamp.repeat(Schedule.fixed(schedulerConfig.toDuration)).unit
-
-    emitTimestamp.repeatN(1).unit
-
-    // Repeat emitTimestamp with backoff logic
-    // emitTimestamp
-    //   .flatMap { coolOff =>
-    //     // Choose backoff delay based on crawl size
-    //     ZIO.sleep(schedulerConfig.toDuration.multipliedBy(coolOff))
-    //   }
-    //   .repeat(Schedule.fixed(schedulerConfig.toDuration))
-    //   .unit
+      _ <- ZIO.sleep(pauseDuration).unit
+    } yield ()).forever
 
   }
 
@@ -197,36 +187,55 @@ object BlogBlitzMachine extends ZIOAppDefault {
     crawlMetaData: BlogPostMeta.CrawlMetadata,
     crawlerService: CrawlerService,
   ): ZIO[Client & CrawlerConfig, Nothing, Unit] = {
+    import WordPressApi.BlogPost
+    import BlogPostMeta._
+
     (for
+
       event <- queue.take
+
       _ <- ZIO.logInfo(
         s"Processing next timestamp event: ${event.sinceTimestampGmt}"
       )
+
       // Turn on crawling mode (so others will know when crawling is in progress)
       _ <- crawlMetaData.activateCrawling
 
-      // Call the CrawlerService
+      // Delegate work to the CrawlerService
       posts <- crawlerService
-        .fetchAndPublishPostsSinceGmt(event.sinceTimestampGmt, publishingBlogPostHub)
+        .fetchAndPublishPostsSinceGmt(
+          event.sinceTimestampGmt,
+          publishingBlogPostHub,
+        )
         .foldZIO(
           error =>
             ZIO
               .logError(
                 s"WordPress fetch failed: ${error} for event: ${event.sinceTimestampGmt}"
-              )
-              .as(List.empty[WordPressApi.BlogPost]),
-          posts => ZIO.succeed(posts),
+              ) *>
+              crawlMetaData
+                .setPreviousCrawlState(PreviousCrawlState.Failure)
+                .as(List.empty[BlogPost]),
+          posts =>
+            (if (posts.isEmpty)
+               crawlMetaData.setPreviousCrawlState(PreviousCrawlState.Empty)
+             else
+               crawlMetaData.setPreviousCrawlState(
+                 PreviousCrawlState.Successful
+               )).as(posts),
         )
 
       _ <- ZIO.logInfo(
         s"Received ${posts.size} blog posts for event: ${event.sinceTimestampGmt}"
       )
 
-      // Send a ping post if there are no posts
-      _ <- ZIO.when(posts.isEmpty)(
-        publishingBlogPostHub.publish(
-          WordPressApi.pingPost
-        )
+      previousCrawlState <- crawlMetaData.getPreviousCrawlState
+
+      _ <- ZIO.when(CrawlStateEvaluator.unsuccessful(previousCrawlState))(
+        publishingBlogPostHub.publish(WordPressApi.pingPost()) *>
+          ZIO.logInfo(
+            s"Sending ping post instead of unsuccessful crawl for event: ${event.sinceTimestampGmt}"
+          )
       )
 
       // At this point, the crawler has collected all
@@ -239,7 +248,6 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
       // Update crawl statuses
       _ <- crawlMetaData.setLastModifiedGmt(lastModifiedGmt)
-      _ <- crawlMetaData.setCrawlSize(posts.size)
       _ <- crawlMetaData.deactivateCrawling
       _ <- ZIO.logInfo(
         s"Tracking 'most recent blog post': $lastModifiedGmt"
@@ -264,7 +272,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
       crawlerService  <- ZIO.service[CrawlerService]
       wsConfig        <- ZIO.service[WebSocketConfig]
 
-      _ <- ZIO.logInfo("Starting blog blitz...")
+      _ <- ZIO.logInfo("Starting blog buzz...")
       _ <- ZIO.logInfo(s"Scheduler config: $schedulerConfig")
       _ <- ZIO.logInfo(s"Crawler config: $crawlerConfig")
 

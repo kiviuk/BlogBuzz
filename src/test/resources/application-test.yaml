@@ -8,6 +8,7 @@ crawler:
 scheduler:
   intervalInSec: 1 # wordpress crawler will run every intervalInSec seconds
   startDateGmt: "2024-12-23T00:00:00Z" # wordpress crawler will load posts starting from this date
+  maxCoolDownScale: 3
 
 websocket:
   port: 8888

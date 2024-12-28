@@ -151,7 +151,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
           _ <- crawlMetaData.setLastModifiedGmt(sinceTimestampGmt)
 
           // Set crawling status to true
-          _ <- crawlMetaData.setCrawlingStatus(true)
+          _ <- crawlMetaData.activateCrawling
 
           fiber <- BlogBlitzMachine
             .timeStampEmitter(queue, crawlMetaData, schedulerConfig)

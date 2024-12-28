@@ -138,7 +138,7 @@ object WordPressApi {
   }
 
   // Ping post to signal that we are still alive even if there are no new posts
-  def pingPost =
+  def pingPost() =
     WordPressApi.BlogPost(
       id = Instant.now.toEpochMilli.toInt,
       title =
@@ -148,8 +148,8 @@ object WordPressApi {
       guid = WordPressApi.Guid(rendered = ""),
       link = "",
       publishedDateGmt = WordPressApi.GmtInstant(Instant.now),
-      modifiedDateGmt = WordPressApi.GmtInstant(Instant.now),
-      importDateTime = Instant.now(),
+      modifiedDateGmt = WordPressApi.GmtInstant(Instant.now()),
+      importDateTime = Instant.now,
       requestUrl = "",
     )
 

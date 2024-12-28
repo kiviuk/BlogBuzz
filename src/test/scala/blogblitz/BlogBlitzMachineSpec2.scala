@@ -69,7 +69,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
           crawlMetaData  <- ZIO.service[BlogPostMeta.CrawlMetadata]
 
           // Initial crawling status should be false
-          initialCrawling <- crawlMetaData.getCrawlStatus
+          initialCrawling <- crawlMetaData.isCrawling
           _               <- ZIO.logInfo(s"Initial crawling status: $initialCrawling")
 
           subscriber <- blogPostHub.subscribe
@@ -94,7 +94,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
           post <- subscriber.take
 
           // Verify crawling status was reset
-          finalCrawling <- crawlMetaData.getCrawlStatus
+          finalCrawling <- crawlMetaData.isCrawling
           _             <- ZIO.logInfo(s"Final crawling status: $finalCrawling")
 
           // Get the most recent modified GMT time for the retrieved posts
@@ -102,8 +102,8 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
 
           _ <- fiber.interrupt
         } yield assertTrue(
-          !initialCrawling.isCrawling,
-          !finalCrawling.isCrawling,
+          !initialCrawling,
+          !finalCrawling,
           post.title.rendered == "Test Blog Post",
           post.modifiedDateGmt.value.isAfter(sinceTimestampGmt),
           post.importDateTime.isAfter(sinceTimestampGmt),
@@ -118,7 +118,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
           crawlMetaData  <- ZIO.service[BlogPostMeta.CrawlMetadata]
 
           // Initial crawling status should be false
-          initialCrawling <- crawlMetaData.getCrawlStatus
+          initialCrawling <- crawlMetaData.isCrawling
           _               <- ZIO.logInfo(s"Initial crawling status: $initialCrawling")
 
           // Offer a timestamp event to the queue
@@ -141,13 +141,13 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
           lastModifiedGmt <- crawlMetaData.getLastModifiedGmt
 
           // Verify crawling status was reset
-          finalCrawling <- crawlMetaData.getCrawlStatus
+          finalCrawling <- crawlMetaData.isCrawling
           _             <- ZIO.logInfo(s"Final crawling status: $finalCrawling")
 
           _ <- fiber.interrupt
         } yield assertTrue(
-          !initialCrawling.isCrawling,
-          !finalCrawling.isCrawling,
+          !initialCrawling,
+          !finalCrawling,
           // Key assertion: when no posts are found,
           // lastModifiedGmt should equal the original timestamp
           lastModifiedGmt == sinceTimestampGmt,

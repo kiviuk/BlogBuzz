@@ -19,6 +19,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 1
       |  startDateGmt: "2024-12-23T00:00:00Z"
+      |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
       |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -34,6 +35,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 1
       |  startDateGmt: "2024-12-23T00:00:00Z"
+      |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
       |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -49,6 +51,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 1
       |  startDateGmt: "2024-12-23T00:00:00Z"
+      |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
       |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -64,6 +67,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 1
       |  startDateGmt: "2024-12-23T00:00:00Z"
+      |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
       |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -79,6 +83,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 0
       |  startDateGmt: "2999-12-23T00:00:00Z"
+      |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
       |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -94,6 +99,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 1
       |  startDateGmt: "2024-12-23T00:00:00Z"
+      |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
       |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -196,6 +202,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                                           |scheduler:
                                           |  intervalInSec: 'X'
                                           |  startDateGmt: "2024-12-23T00:00:00Z"
+                                          |  maxCoolDownScale: 3
                                           |websocket:
                                           |  port: 8888
                                           |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -255,6 +262,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |scheduler:
                             |  intervalInSec: 1
                             |  startDateGmt: "2024-12-23T00:00:00Z"
+                            |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 8888
                             |  subscribePath: ""
@@ -277,6 +285,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |scheduler:
                             |  intervalInSec: 1
                             |  startDateGmt: "2024-12-23T00:00:00Z"
+                            |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 8888
                             |  subscribePath: "ws://localhost:8888/subscribe/v1"
@@ -299,6 +308,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |scheduler:
                             |  intervalInSec: 1
                             |  startDateGmt: "2024-12-23T00:00:00Z"
+                            |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 1023
                             |  subscribePath: "ws://localhost:${port}/subscribe/v1"
@@ -325,6 +335,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |scheduler:
                             |  intervalInSec: 1
                             |  startDateGmt: "2024-12-23T00:00:00Z"
+                            |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 65536
                             |  subscribePath: "ws://localhost:${port}/subscribe/v1"

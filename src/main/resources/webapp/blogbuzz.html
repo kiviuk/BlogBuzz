@@ -56,15 +56,16 @@
 
 <body>
     <div>
-        <div id="output"></div>
+        <div id="output">
+            Welcome to BlogBuzz!
+            <br />
+            <br />
+            Hit ENTER in the server console to start crawling for messages.
+        </div>
         <br />
     </div>
     <script>
         const output = document.getElementById("output");
-
-        // Initially display a starting message
-        output.append("Welcome to BlogBuzz!");
-        output.append("Hit ENTER in the server console to start crawling for messages.");
 
         // WebSocket connection
         const socket = new WebSocket("ws://localhost:8888/subscribe/v1");
@@ -133,6 +134,7 @@
 
                 // Extract sanitized values or default if missing
                 const title = item.title ? sanitizeText(item.title) : "[Unknown Title]";
+                const importedDate = item.importDateTime ? sanitizeText(item.importDateTime) : "[Unknown Imported Date]";
                 const publishedDate = item.publishedDateGmt ? sanitizeText(item.publishedDateGmt) : "[Unknown Published Date]";
                 const modifiedDate = item.modifiedDateGmt ? sanitizeText(item.modifiedDateGmt) : "[Unknown Modified Date]";
                 const link = item.link ? sanitizeText(item.link) : "#";
@@ -144,6 +146,7 @@
                 // Create the basic structure
                 messageDiv.innerHTML = `
                     <strong>Title:</strong> ${title} <br>
+                    <strong>Imported Date:</strong> ${importedDate} <br>
                     <strong>Published Date:</strong> ${publishedDate} <br>
                     <strong>Modified Date:</strong> ${modifiedDate} <br>
                     <strong>Link:</strong> <a href="${link}" target="_blank">${link}</a> <br>

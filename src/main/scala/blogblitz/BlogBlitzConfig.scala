@@ -71,7 +71,10 @@ object BlogBlitzConfig:
     DeriveConfig[String].map(string => Instant.parse(string))
 
   // Todo: allow cron-style scheduling
-  case class SchedulerConfig(intervalInSec: Int, startDateGmt: Instant) {
+  case class SchedulerConfig(
+    intervalInSec: Int,
+    startDateGmt: Instant,
+    maxCoolDownScale: Int) {
     def validate: Either[String, Unit] = {
       val oneHourInSec      = 60 * 60
       val isInvalidInterval = intervalInSec <= 0 || intervalInSec > oneHourInSec
@@ -86,6 +89,11 @@ object BlogBlitzConfig:
         if startDateGmt.isAfter(Instant.now()) then
           Some(
             s"Scheduler: startDateGmt: '$startDateGmt' must be in the past"
+          )
+        else None,
+        if maxCoolDownScale <= 0 then
+          Some(
+            s"Scheduler: maxCoolDownScala: '$maxCoolDownScale' must be greater than 0"
           )
         else None,
       ).flatten
