@@ -13,6 +13,7 @@ A ZIO-based web application featuring WebSocket functionality.
 - Scala 3.6.2
 - ZIO 2.1.9
 - openjdk 17.0.9
+- Thorium (release 8)
 
 ## How to use
 
@@ -26,11 +27,11 @@ A ZIO-based web application featuring WebSocket functionality.
 9. Hit **ENTER** again to stop crawling and stop the server at any time.
 
 ## What's happening?
-1. Messages / blog post data will appear in the browser in real time as they are received from the WebPress backend.
+1. Messages / blog post data will appear in the browser in real time as they are received from the WordPress backend.
 2. Incoming messages will display the word count map (top 10) as well as additional metadata related to the blogpost. The browser will automatically sort incoming messages by the WordPress post modifiedDateGmt.
 3. Run `wscat -c ws://localhost:8888/subscribe/v1 | tee output.txt` from your terminal to additionally receive the `unsorted JSON data`.
 4. The crawler is tested and configured to fetch items from https://wptavern.com.
-5. After all messages have been consumed by the backend, polling for new messages enters a 'cooling' period. Polling will occur once every 30 seconds, compared to every 10 seconds. An additional ping post will be published every 30 seconds as long as there are no new blog posts. This is to prevent the server connection from shutting down and to keep the UI action happening. You can see the latest ping post coming in on top of the list in the browser.
+5. After all messages have been consumed by the backend, polling for new messages enters a 'cooling' period. Polling will occur once every 30 seconds (= 3 * scheduler.intervalInSec), compared to every 10 seconds (= scheduler.intervalInSec). An additional ping post will be published every 30 seconds as long as there are no new blog posts. This is to prevent the server connection from shutting down and to keep the UI action happening. You can see the latest ping post coming in on top of the list in the browser.
 
 # Files
 
@@ -47,7 +48,7 @@ A ZIO-based web application featuring WebSocket functionality.
  
     - Main configuration options:
         - **intervalInSec**: the interval at which the WordPress backend is polled for new posts.
-        - **startDateGmt**: Lower bound date for fetching posts.
+        - **startDateGmt**: the initial lower bound date for fetching posts.
         - **port**: Port for the WebSocket and HTTP server.
         - **subscribePath**: WebSocket subscription path. 
         - **subscribePath** is also hardcoded in `src/main/resources/webapp/blogbuzz.html`
@@ -71,7 +72,7 @@ The app is made up of the following components:
     - Add support for a REST endpoint to fetch historic blog posts.
     - Use websockets to push only new blog posts to clients.
     - Explore webhooks/websub alternatives for notifying clients of new blog posts.
-
+    
 2. **Security**
 
     - WebSocket connections are currently unsecured. Authentication and authorization mechanisms should be added to prevent unauthorized access.
@@ -81,7 +82,7 @@ The app is made up of the following components:
     - GC performance and memory usage needs (more) testing.
     - JSON conversion could benefit from upickle to improve speed and memory efficiency.
     - Handling of server side rate limiting.
-
+      
 4. **Persistence**
 
     * Currently, the server does not maintain any state beyond its in-memory storage.
@@ -89,7 +90,7 @@ The app is made up of the following components:
 
 5. **Miscellaneous**    
 
-    * Replace custom code with standard libraries (configuration management, validation).
+    * Replace custom code with standard libraries (eg configuration management, validation).
     * Support for exponential/predictive cool-off strategy.
     * Cool-off params should be configurable.
     * Fully master and leverage ZIO features.
