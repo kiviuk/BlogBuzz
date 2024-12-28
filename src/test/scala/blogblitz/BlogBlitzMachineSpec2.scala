@@ -66,7 +66,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
 
           timestampQueue <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
           blogPostHub    <- ZIO.service[Hub[WordPressApi.BlogPost]]
-          crawlMetaData  <- ZIO.service[BlogPostMeta.CrawlMetadata]
+          crawlMetaData  <- ZIO.service[CrawlerMeta.CrawlMetadata]
 
           // Initial crawling status should be false
           initialCrawling <- crawlMetaData.isCrawling
@@ -115,7 +115,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
 
           timestampQueue <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
           blogPostHub    <- ZIO.service[Hub[WordPressApi.BlogPost]]
-          crawlMetaData  <- ZIO.service[BlogPostMeta.CrawlMetadata]
+          crawlMetaData  <- ZIO.service[CrawlerMeta.CrawlMetadata]
 
           // Initial crawling status should be false
           initialCrawling <- crawlMetaData.isCrawling
@@ -156,7 +156,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
     )
   ).provide(
     timestampHubLayer,
-    BlogPostMeta.layer,
+    CrawlerMeta.layer,
     blogPostHubLayer,
     BlogBlitzConfig.crawlerLayer,
     BlogBlitzConfig.schedulerLayer,

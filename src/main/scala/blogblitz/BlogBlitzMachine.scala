@@ -139,10 +139,10 @@ object BlogBlitzMachine extends ZIOAppDefault {
   // Event queue ensures work items are processed sequentially in the order they are added (emits heartbeat)
   def timeStampEmitter(
     eventQueue: Queue[TimestampEvent],
-    crawlMetaData: BlogPostMeta.CrawlMetadata,
+    crawlMetaData: CrawlerMeta.CrawlMetadata,
     schedulerConfig: BlogBlitzConfig.SchedulerConfig,
   ): ZIO[Any, Nothing, Unit] = {
-    import BlogPostMeta._
+    import CrawlerMeta._
     (for {
       // Keep the queue free from noise.
       // Only submit events, if crawler is free.
@@ -184,11 +184,11 @@ object BlogBlitzMachine extends ZIOAppDefault {
   def timestampListener(
     queue: Queue[TimestampEvent],
     publishingBlogPostHub: Hub[WordPressApi.BlogPost],
-    crawlMetaData: BlogPostMeta.CrawlMetadata,
+    crawlMetaData: CrawlerMeta.CrawlMetadata,
     crawlerService: CrawlerService,
   ): ZIO[Client & CrawlerConfig, Nothing, Unit] = {
     import WordPressApi.BlogPost
-    import BlogPostMeta._
+    import CrawlerMeta._
 
     (for
 
@@ -240,7 +240,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
       // At this point, the crawler has collected all
       // blog posts for the given timestamp,
-      // the most recent determines the next start timestamp
+      // the most recent determines the next event timestamp
       lastModifiedGmt = posts
         .map(_.modifiedDateGmt.value)
         .maxOption
@@ -266,7 +266,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     val program = for {
       timestampQueue  <- Queue.bounded[TimestampEvent](QUEUE_CAPACITY)
       blogPostHub     <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
-      crawlMetaData   <- ZIO.service[BlogPostMeta.CrawlMetadata]
+      crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetadata]
       schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
       crawlerConfig   <- ZIO.service[BlogBlitzConfig.CrawlerConfig]
       crawlerService  <- ZIO.service[CrawlerService]
@@ -311,7 +311,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
     program
       .provide(
-        BlogPostMeta.layer,
+        CrawlerMeta.layer,
         BlogBlitzConfig.schedulerLayer,
         BlogBlitzConfig.crawlerLayer,
         BlogBlitzConfig.websocketLayer,

@@ -8,7 +8,7 @@ import java.time.temporal.ChronoUnit.*
 /*
  * Tracks crawl metadata
  */
-object BlogPostMeta {
+object CrawlerMeta {
   object CrawlStateEvaluator {
     def successful(state: PreviousCrawlState): Boolean =
       state == PreviousCrawlState.Successful || state == PreviousCrawlState.NotYetCrawled
@@ -26,11 +26,10 @@ object BlogPostMeta {
   case class CrawlState(
     val isCrawling: Boolean,
     val previousCrawlState: PreviousCrawlState = PreviousCrawlState.NotYetCrawled)
-  case class CrawlSize(crawlSize: Int)
 
   trait CrawlMetadata {
-    def getLastModifiedGmt: UIO[Instant]
     // tracks the most recent blog post modification time of the current crawl
+    def getLastModifiedGmt: UIO[Instant]
     def setLastModifiedGmt(time: Instant): UIO[Unit]
     // notifies that crawling is underway
     def activateCrawling: UIO[Unit]

@@ -108,7 +108,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
       test("publishes periodic timestamp events to the hub") {
         for {
           queue           <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
-          crawlMetaData   <- ZIO.service[BlogPostMeta.CrawlMetadata]
+          crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetadata]
           schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
 
           log <- ZIO.logInfo(
@@ -144,7 +144,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
       test("skips emitting events when crawling is in progress") {
         for {
           queue           <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
-          crawlMetaData   <- ZIO.service[BlogPostMeta.CrawlMetadata]
+          crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetadata]
           schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
 
           _ <- TestClock.setTime(sinceTimestampGmt)
@@ -185,7 +185,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
     ),
   ).provide(
     timestampHubLayer,
-    BlogPostMeta.layer,
+    CrawlerMeta.layer,
     BlogBlitzConfig.schedulerLayer,
     Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
   )
