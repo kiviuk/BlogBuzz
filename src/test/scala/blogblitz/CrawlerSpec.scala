@@ -74,8 +74,7 @@ object CrawlerSpec extends ZIOSpecDefault:
     suite("fetchPostsSinceGmt")(
       test("skips invalid JSON response") {
         for
-          client <- ZIO.service[Client]
-          port   <- ZIO.serviceWithZIO[Server](_.port)
+          port <- ZIO.serviceWithZIO[Server](_.port)
 
           // add test routes that mimic WordPress API
           _ <- TestServer.addRoutes {
@@ -101,7 +100,7 @@ object CrawlerSpec extends ZIOSpecDefault:
           posts <- Crawler
             .WordPressCrawler
             .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-            .provide(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
+            .provideSome(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
 
           hubSize <- post.size
         yield assertTrue(
@@ -113,8 +112,7 @@ object CrawlerSpec extends ZIOSpecDefault:
         "successfully fetches and parses blog posts in multiple pages recursively"
       ) {
         for {
-          client <- ZIO.service[Client]
-          port   <- ZIO.serviceWithZIO[Server](_.port)
+          port <- ZIO.serviceWithZIO[Server](_.port)
 
           // add test routes that mimic WordPress API
           _ <- TestServer.addRoutes {
@@ -134,17 +132,19 @@ object CrawlerSpec extends ZIOSpecDefault:
             perPage = PerPage(10),
           )
 
-          hub <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
+          hub  <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
+          post <- hub.subscribe
 
           // run the crawler with our test configuration
           posts <- Crawler
             .WordPressCrawler
             .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
             .provide(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
-          post    <- hub.subscribe
+
           hubSize <- post.takeAll
         } yield assertTrue(
           posts.length == 4,
+          hubSize.length == 4,
           posts.head.title.rendered == "Test Post 1",
           posts.head.content.rendered == "Content 1",
           posts(1).title.rendered == "Test Post 2",
@@ -153,8 +153,7 @@ object CrawlerSpec extends ZIOSpecDefault:
       },
       test("successfully fetches and parses blog posts") {
         for
-          client <- ZIO.service[Client]
-          port   <- ZIO.serviceWithZIO[Server](_.port)
+          port <- ZIO.serviceWithZIO[Server](_.port)
 
           // add test routes that mimic WordPress API
           _ <- TestServer.addRoutes {
@@ -180,7 +179,7 @@ object CrawlerSpec extends ZIOSpecDefault:
           posts <- Crawler
             .WordPressCrawler
             .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-            .provide(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
+            .provideSome(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
 
           hubSize <- post.size
         yield assertTrue(
@@ -194,7 +193,6 @@ object CrawlerSpec extends ZIOSpecDefault:
       },
     ).provide(
       ZLayer.succeed(Server.Config.default.onAnyOpenPort),
-      Client.default,
       NettyDriver.customized,
       TestServer.layer,
       Scope.default,
@@ -202,141 +200,3 @@ object CrawlerSpec extends ZIOSpecDefault:
       Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
     ),
   )
-
-  //   suite("fetchPostsSinceGmt") (
-  //     test("successfully fetches and parses blog posts") {
-  //       for
-  //         client <- ZIO.service[Client]
-  //         port   <- ZIO.serviceWithZIO[Server](_.port)
-
-  //         // add test routes that mimic WordPress API
-  //         _ <- TestServer.addRoutes {
-  //           Routes(
-  //             Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
-  //               Response
-  //                 .json(sampleBlogPosts)
-  //                 .addHeader(Header.ContentType(MediaType.application.json))
-  //                 .addHeader(Header.Custom("X-WP-TotalPages", "2"))
-  //             }
-  //           )
-  //         }
-
-  //         crawlerTestConfig = CrawlerConfig(
-  //           host = Host(s"http://localhost:$port"),
-  //           apiPath = ApiPath("wp-json/wp/v2/posts"),
-  //           perPage = PerPage(10),
-  //         )
-
-  //         hub <- Hub.bounded[WordPress.BlogPost](QUEUE_CAPACITY)
-
-  //         posts <- Crawler
-  //           .WordPressCrawler
-  //           .fetchPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-  //           .provide(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
-
-  //         post    <- hub.subscribe
-  //         hubSize <- post.size
-  //       yield assertTrue(
-  //         posts.length == 2,
-  //         hubSize == posts.length,
-  //         posts.head.title.rendered == "Test Post 1",
-  //         posts.head.content.rendered == "Content 1",
-  //         posts(1).title.rendered == "Test Post 2",
-  //         posts(1).content.rendered == "Content 2",
-  //       )
-  //     }
-
-  //   //   test("fails to parse invalid JSON response") {
-  //   //     for
-  //   //       client <- ZIO.service[Client]
-  //   //       port   <- ZIO.serviceWithZIO[Server](_.port)
-
-  //   //       // add test routes that mimic WordPress API
-  //   //       _ <- TestServer.addRoutes {
-  //   //         Routes(
-  //   //           Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
-  //   //             Response
-  //   //               .json(invalidBlogPosts)
-  //   //               .addHeader(Header.ContentType(MediaType.application.json))
-  //   //               .addHeader(Header.Custom("X-WP-TotalPages", "2"))
-  //   //           }
-  //   //         )
-  //   //       }
-
-  //   //       crawlerTestConfig = CrawlerConfig(
-  //   //         host = Host(s"http://localhost:$port"),
-  //   //         apiPath = ApiPath("wp-json/wp/v2/posts"),
-  //   //         perPage = PerPage(10),
-  //   //       )
-
-  //   //       hub <- Hub.bounded[WordPress.BlogPost](QUEUE_CAPACITY)
-
-  //   //       posts <- Crawler
-  //   //         .WordPressCrawler
-  //   //         .fetchPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-  //   //         .provide(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
-
-  //   //       post    <- hub.subscribe
-  //   //       hubSize <- post.size
-  //   //     yield assertTrue(
-  //   //       posts.length == 2,
-  //   //       hubSize == posts.length,
-  //   //       posts.head.title.rendered == "Test Post 1",
-  //   //       posts.head.content.rendered == "Content 1",
-  //   //       posts(1).title.rendered == "Test Post 2",
-  //   //       posts(1).content.rendered == "Content 2",
-  //   //     )
-  //   // }
-
-  //   test(
-  //     "successfully fetches and parses blog posts in multiple pages recursively"
-  //   ) {
-  //     for
-  //       client <- ZIO.service[Client]
-  //       port   <- ZIO.serviceWithZIO[Server](_.port)
-
-  //       // add test routes that mimic WordPress API
-  //       _ <- TestServer.addRoutes {
-  //         Routes(
-  //           Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
-  //             Response
-  //               .json(sampleBlogPosts)
-  //               .addHeader(Header.ContentType(MediaType.application.json))
-  //               .addHeader(Header.Custom("X-WP-TotalPages", "2"))
-  //           }
-  //         )
-  //       }
-
-  //       crawlerTestConfig = CrawlerConfig(
-  //         host = Host(s"http://localhost:$port"),
-  //         apiPath = ApiPath("wp-json/wp/v2/posts"),
-  //         perPage = PerPage(10),
-  //       )
-
-  //       hub <- Hub.bounded[WordPress.BlogPost](QUEUE_CAPACITY)
-
-  //       // run the crawler with our test configuration
-  //       posts <- Crawler
-  //         .WordPressCrawler
-  //         .fetchPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-  //         .provide(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
-  //       post    <- hub.subscribe
-  //       hubSize <- post.takeAll
-  //     yield assertTrue(
-  //       posts.length == 4,
-  //       posts.head.title.rendered == "Test Post 1",
-  //       posts.head.content.rendered == "Content 1",
-  //       posts(1).title.rendered == "Test Post 2",
-  //       posts(1).content.rendered == "Content 2",
-  //     )
-  //   }
-  // }
-  // ).provide(
-  //   ZLayer.succeed(Server.Config.default.onAnyOpenPort),
-  //   Client.default,
-  //   NettyDriver.customized,
-  //   TestServer.layer,
-  //   Scope.default,
-  //   ZLayer.succeed(NettyConfig.defaultWithFastShutdown),
-  //   Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
-  // )

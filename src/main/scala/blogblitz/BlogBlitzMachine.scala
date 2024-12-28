@@ -145,7 +145,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     val emitTimestamp = (for {
       // Keep the queue free of noisy events.
       // Only submit events, if crawler is free.
-      // todo: repl ace with ZIO CyclicBarrier
+      // todo: replace with ZIO CyclicBarrier
       state <- crawlMetaData.getCrawlStatus
       _ <- ZIO.unless(state.isCrawling) {
         for {
@@ -210,10 +210,11 @@ object BlogBlitzMachine extends ZIOAppDefault {
         .fetchAndPublishPostsSinceGmt(event.sinceTimestampGmt, publishingBlogPostHub)
         .foldZIO(
           error =>
-            ZIO.logError(
-              s"WordPress fetch failed: ${error} for event: ${event.sinceTimestampGmt}"
-            ) *>
-              ZIO.succeed(List.empty[WordPressApi.BlogPost]),
+            ZIO
+              .logError(
+                s"WordPress fetch failed: ${error} for event: ${event.sinceTimestampGmt}"
+              )
+              .as(List.empty[WordPressApi.BlogPost]),
           posts => ZIO.succeed(posts),
         )
 
@@ -238,8 +239,8 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
       // Update crawl statuses
       _ <- crawlMetaData.setLastModifiedGmt(lastModifiedGmt)
-      _ <- crawlMetaData.deactivateCrawling
       _ <- crawlMetaData.setCrawlSize(posts.size)
+      _ <- crawlMetaData.deactivateCrawling
       _ <- ZIO.logInfo(
         s"Tracking 'most recent blog post': $lastModifiedGmt"
       )
@@ -251,6 +252,9 @@ object BlogBlitzMachine extends ZIOAppDefault {
   override def run = {
 
     // TODO: automatically wait for some websocket client to connect before running the crawler?
+    // and stop crawler if no client is connected
+    // https://zio.dev/zio-http/examples/websocket/
+    // https://github.com/scala-steward/zio-http/blob/d0c229d0beb857075e98597fbadbd33d4f07a917/zio-http-testkit/src/test/scala/zio/http/SocketContractSpec.scala#L142
     val program = for {
       timestampQueue  <- Queue.bounded[TimestampEvent](QUEUE_CAPACITY)
       blogPostHub     <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)

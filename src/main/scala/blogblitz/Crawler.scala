@@ -22,13 +22,13 @@ object Crawler {
   private val ORDERBY        = "orderby"
   private val ORDER          = "order"
   private val PAGE           = "page"
-  private val DATE           = "date"
+  private val ORDER_BY_DATE  = "modified" // WP supports date or modified
   private val ASC            = "asc"
 
-  val timeoutDuration = 10.seconds
+  private val timeoutDuration = 10.seconds
 
   // total number of pages in the response
-  val X_WP_TOTAL_PAGES_HEADER = "X-WP-TotalPages"
+  private val X_WP_TOTAL_PAGES_HEADER = "X-WP-TotalPages"
 
   private val FIRST_PAGE = 1
 
@@ -63,10 +63,10 @@ object Crawler {
         // Construct the full URL with the path and query parameters
         // note: Strict ordering loses significance for parallel page requests
         url = createUrl(baseUrl, config.apiPath.value)
-          .addQueryParam(PER_PAGE, config.perPage.toString())
-          .addQueryParam(AFTER, sinceTimestamp.toString())
-          .addQueryParam(MODIFIED_AFTER, sinceTimestamp.toString())
-          .addQueryParam(ORDERBY, DATE)
+          .addQueryParam(PER_PAGE, config.perPage.toString)
+          .addQueryParam(AFTER, sinceTimestamp.toString)
+          .addQueryParam(MODIFIED_AFTER, sinceTimestamp.toString)
+          .addQueryParam(ORDERBY, ORDER_BY_DATE)
           .addQueryParam(ORDER, ASC)
           .addQueryParam(PAGE, page.toString)
 
@@ -85,7 +85,7 @@ object Crawler {
                             | - ${PER_PAGE}: ${config.perPage}
                             | - ${AFTER}: $sinceTimestamp
                             | - ${MODIFIED_AFTER}: $sinceTimestamp
-                            | - ${ORDERBY}: ${DATE}
+                            | - ${ORDERBY}: ${ORDER_BY_DATE}
                             | - ${ORDER}: ${ASC}
                             | - ${PAGE}: $page
                             |""".stripMargin)
@@ -96,11 +96,13 @@ object Crawler {
           .timeout(timeoutDuration)
 
         response <- response match {
-          case Some(value) => ZIO.succeed(value) // Use the response if it completes within the timeout
+          case Some(value) => ZIO.succeed(value)
           case None =>
-            ZIO.logError(
-              s"Crawler timed out after timeoutDuration = ${timeoutDuration.toSeconds} sec for URL: $url"
-            ) *> ZIO.succeed(Response.status(Status.Ok)) // Log the error and continue with an empty response
+            ZIO
+              .logError(
+                s"Crawler timed out after timeoutDuration = ${timeoutDuration.toSeconds} sec for URL: $url"
+              )
+              .as(Response.status(Status.Ok)) // Log the error and continue with an empty response
         }
 
         // Extract response body
@@ -118,9 +120,9 @@ object Crawler {
           if page == FIRST_PAGE && totalPages > FIRST_PAGE then
             // Start fetching remaining pages recursively on separate fibers
             ZIO
-              .collectAllPar((2 to totalPages).map { p =>
+              .foreachPar(FIRST_PAGE + 1 to totalPages) { p =>
                 fetchAndPublishPostsSinceGmt(sinceTimestamp, publishingBlogPostHub, p)
-              })
+              }
               .fork // good luck
           else
             ZIO.succeed(
@@ -129,7 +131,7 @@ object Crawler {
 
         _ <- ZIO.logInfo(s"Page: $page")
         _ <- ZIO.logInfo(s"Total Pages: $totalPages")
-        _ <- ZIO.logInfo(s"Response body: $responseBody")
+        _ <- ZIO.logDebug(responseBody)
 
         // Parse posts from JSON response, skipping invalid posts
         posts <- ZIO
@@ -143,14 +145,10 @@ object Crawler {
 
         // Collect all posts in the current page and add request URL for debugging
         updatedPosts = posts
-          .map { post =>
-            post.copy(
-              requestUrl = url.toString()
-            )
-          }
+          .map { post => post.copy(requestUrl = url.toString()) }
 
         // Send each post to the publishing hub
-        _ <- ZIO.foreach(updatedPosts) { post =>
+        _ <- ZIO.foreachDiscard(updatedPosts) { post =>
           publishingBlogPostHub.publish(post) *>
             ZIO.logDebug(
               s"Publishing blog post: ${post.id} - ${post.title.rendered}".take(80)

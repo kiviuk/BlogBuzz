@@ -162,7 +162,7 @@ object WordPressApiSpec extends ZIOSpecDefault {
       val invalidJson = "\"not-a-timestamp\""
       val result      = invalidJson.fromJson[Instant]
 
-      assert(result)(isLeft(Assertion.containsString("Failed to parse Instant"))) // Assertion to ensure result is a Left
+      assert(result)(isLeft(Assertion.containsString("Failed to parse Instant")))
     },
   )
 
