@@ -13,4 +13,4 @@ scheduler:
 # The websocket config
 websocket:
   port: 8888
-  subscribePath: "ws://localhost:${port}/subscribe/v1"
+  subscribePath: "ws://localhost:${port}/subscribe/v2"

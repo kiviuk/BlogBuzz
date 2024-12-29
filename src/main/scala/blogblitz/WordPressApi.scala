@@ -9,26 +9,28 @@ import java.time.Instant
 object WordPressApi {
 
   // WordPress GMT timestamps are in a non-standard format, should be ISO-8601
-  implicit val instantGmtDecoder: JsonDecoder[Instant] =
+  implicit val instantGmtDecoder: JsonDecoder[Instant] = {
     JsonDecoder[String].mapOrFail { str =>
       // Append 'Z' to match ISO-8601
       val isoStr = if str.endsWith("Z") then str else s"${str}Z"
       try Right(Instant.parse(isoStr))
       catch {
-        case ex: Exception => Left(s"Failed to parse Instant: ${ex}")
+        case ex: Exception => Left(s"Failed to parse Instant: $ex")
       }
     }
+  }
 
   // A unique type for GMT fields to distinguish them from local ones
   opaque type GmtInstant = Instant
-  object GmtInstant:
+  object GmtInstant {
     def apply(instant: Instant): GmtInstant        = instant
     extension (gmt: GmtInstant) def value: Instant = gmt
 
     implicit val decoder: JsonDecoder[GmtInstant] =
       instantGmtDecoder.map(GmtInstant(_))
+  }
 
-  // Inbound wordpress post
+  // Inbound WordPress post
   // Note on DDD: This is a dto not the actual domain object
   case class BlogPost(
     // The title of the post.
@@ -55,22 +57,26 @@ object WordPressApi {
 
   case class Content(
     rendered: String)
+
   case class Guid(
     rendered: String)
 
-  object Title:
+  object Title {
     implicit val decoder: JsonDecoder[Title] = DeriveJsonDecoder.gen[Title]
+  }
 
-  object Content:
+  object Content {
     implicit val decoder: JsonDecoder[Content] = DeriveJsonDecoder.gen[Content]
+  }
 
-  object Guid:
+  object Guid {
     implicit val decoder: JsonDecoder[Guid] = DeriveJsonDecoder.gen[Guid]
+  }
 
-  object BlogPost:
+  object BlogPost {
     implicit val decoder: JsonDecoder[BlogPost] =
       DeriveJsonDecoder.gen[BlogPost]
-
+  }
   case class OutboundBlogPost(
     id: Int,
     title: String,
@@ -138,7 +144,7 @@ object WordPressApi {
   }
 
   // Ping post to signal that we are still alive even if there are no new posts
-  def pingPost() =
+  def pingPost(): BlogPost =
     WordPressApi.BlogPost(
       id = Instant.now.toEpochMilli.toInt,
       title =
@@ -150,7 +156,6 @@ object WordPressApi {
       publishedDateGmt = WordPressApi.GmtInstant(Instant.now),
       modifiedDateGmt = WordPressApi.GmtInstant(Instant.now()),
       importDateTime = Instant.now,
-      requestUrl = "",
     )
 
 }

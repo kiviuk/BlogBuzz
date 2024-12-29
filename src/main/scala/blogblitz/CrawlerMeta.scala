@@ -9,12 +9,6 @@ import java.time.temporal.ChronoUnit.*
  * Tracks crawl metadata
  */
 object CrawlerMeta {
-  object CrawlStateEvaluator {
-    def successful(state: PreviousCrawlState): Boolean =
-      state == PreviousCrawlState.Successful || state == PreviousCrawlState.NotYetCrawled
-    def unsuccessful(state: PreviousCrawlState): Boolean = !successful(state)
-
-  }
   enum PreviousCrawlState {
     case NotYetCrawled extends PreviousCrawlState
     case Successful    extends PreviousCrawlState
@@ -23,11 +17,11 @@ object CrawlerMeta {
 
   }
 
-  case class CrawlState(
-    val isCrawling: Boolean,
-    val previousCrawlState: PreviousCrawlState = PreviousCrawlState.NotYetCrawled)
+  private case class CrawlState(
+    isCrawling: Boolean = false,
+    previousCrawlState: PreviousCrawlState = PreviousCrawlState.NotYetCrawled)
 
-  trait CrawlMetadata {
+  trait CrawlMetaDataService {
     // tracks the most recent blog post modification time of the current crawl
     def getLastModifiedGmt: UIO[Instant]
     def setLastModifiedGmt(time: Instant): UIO[Unit]
@@ -42,10 +36,10 @@ object CrawlerMeta {
 
   }
 
-  class CrawlMetadataRepository(
+  private class CrawlMetaDataRepository(
     crawlStateRef: Ref[CrawlState],
     lastModifiedGmtRef: Ref[Instant])
-      extends CrawlMetadata {
+      extends CrawlMetaDataService {
     def getLastModifiedGmt: UIO[Instant] = lastModifiedGmtRef.get
     def setLastModifiedGmt(time: Instant): UIO[Unit] =
       ZIO.when(time.isAfter(Instant.now()))(
@@ -53,8 +47,7 @@ object CrawlerMeta {
       ) *>
         lastModifiedGmtRef.set(time)
 
-    def getCrawlState: UIO[CrawlState] = crawlStateRef.get
-    def setCrawlingStatus(isCrawling: Boolean): UIO[Unit] =
+    private def setCrawlingStatus(isCrawling: Boolean): UIO[Unit] =
       crawlStateRef.update(_.copy(isCrawling = isCrawling))
 
     // shortcuts for activating and deactivating crawling
@@ -71,16 +64,18 @@ object CrawlerMeta {
 
   }
 
-  val layer: ZLayer[BlogBlitzConfig.SchedulerConfig, Nothing, CrawlMetadata] =
+  val layer: ZLayer[BlogBlitzConfig.SchedulerConfig, Nothing, CrawlMetaDataService] = {
     ZLayer.fromZIO(
       for
         schedulerConfig    <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
-        crawlStateRef      <- Ref.make[CrawlState](CrawlState(false))
+        crawlStateRef      <- Ref.make[CrawlState](CrawlState())
         lastModifiedGmtRef <- Ref.make[Instant](schedulerConfig.startDateGmt)
-      yield new CrawlMetadataRepository(
+      yield new CrawlMetaDataRepository(
         crawlStateRef,
         lastModifiedGmtRef,
       )
     )
+  }
 
 }
+

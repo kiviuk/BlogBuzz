@@ -100,6 +100,11 @@ withCls(
 )
 
 withCls(
+  "q",
+  "exit",
+)
+
+withCls(
   "s",
   "scalafix RemoveUnused;" +
     " scalafix OrganizeImports;" +

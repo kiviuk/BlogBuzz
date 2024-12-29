@@ -22,7 +22,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
-      |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+      |  subscribePath: "ws://localhost:${port}/subscribe/v2"
       |""".stripMargin
 
   // an invalid configuration YAML (invalid perPage)
@@ -38,7 +38,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
-      |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+      |  subscribePath: "ws://localhost:${port}/subscribe/v2"
       |""".stripMargin
 
   // an invalid configuration YAML (invalid host)
@@ -54,7 +54,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
-      |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+      |  subscribePath: "ws://localhost:${port}/subscribe/v2"
       |""".stripMargin
 
   // an invalid configuration YAML (invalid host and perPage)
@@ -70,11 +70,11 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
-      |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+      |  subscribePath: "ws://localhost:${port}/subscribe/v2"
       |""".stripMargin
 
   // an invalid configuration YAML (invalid scheduler interval)
-  val invalidSchedulerIntervalYaml: String =
+  val invalidSchedulerIntervalAndCoolDownScalaYaml: String =
     """
       |crawler:
       |  host: http://example.com
@@ -83,10 +83,10 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |scheduler:
       |  intervalInSec: 0
       |  startDateGmt: "2999-12-23T00:00:00Z"
-      |  maxCoolDownScale: 3
+      |  maxCoolDownScale: 0
       |websocket:
       |  port: 8888
-      |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+      |  subscribePath: "ws://localhost:${port}/subscribe/v2"
       |""".stripMargin
 
   // an invalid configuration YAML (invalid scheduler interval)
@@ -102,7 +102,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       |  maxCoolDownScale: 3
       |websocket:
       |  port: 8888
-      |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+      |  subscribePath: "ws://localhost:${port}/subscribe/v2"
       |""".stripMargin
 
   def spec = suite("BlogBlitzConfigSpec")(
@@ -180,7 +180,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       },
       test("should fail validation for invalid negative interval") {
         val configProvider =
-          ConfigProvider.fromYamlString(invalidSchedulerIntervalYaml)
+          ConfigProvider.fromYamlString(invalidSchedulerIntervalAndCoolDownScalaYaml)
         val result =
           configProvider.load(BlogBlitzConfig.config).flatMap { config =>
             ZIO.fromEither(config.scheduler.validate)
@@ -189,6 +189,8 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
           isLeft(
             containsString("must be between") && containsString(
               "Scheduler: startDateGmt: '2999-12-23T00:00:00Z' must be in the past"
+            ) && containsString(
+              "Scheduler: maxCoolDownScale: integer '0' must be greater than 0"
             )
           )
         )
@@ -205,7 +207,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                                           |  maxCoolDownScale: 3
                                           |websocket:
                                           |  port: 8888
-                                          |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+                                          |  subscribePath: "ws://localhost:${port}/subscribe/v2"
                                           |""".stripMargin
 
         val configProvider =
@@ -240,7 +242,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
 
         assertZIO(result)(
           equalTo(
-            "ws://localhost:8888/subscribe/v1"
+            "ws://localhost:8888/subscribe/v2"
           )
         )
       },
@@ -288,7 +290,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 8888
-                            |  subscribePath: "ws://localhost:8888/subscribe/v1"
+                            |  subscribePath: "ws://localhost:8888/subscribe/v2"
                             |""".stripMargin
 
         val configProvider = ConfigProvider.fromYamlString(invalidYaml)
@@ -311,7 +313,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 1023
-                            |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+                            |  subscribePath: "ws://localhost:${port}/subscribe/v2"
                             |""".stripMargin
 
         val configProvider = ConfigProvider.fromYamlString(invalidYaml)
@@ -338,7 +340,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
                             |  maxCoolDownScale: 3
                             |websocket:
                             |  port: 65536
-                            |  subscribePath: "ws://localhost:${port}/subscribe/v1"
+                            |  subscribePath: "ws://localhost:${port}/subscribe/v2"
                             |""".stripMargin
 
         val configProvider = ConfigProvider.fromYamlString(invalidYaml)

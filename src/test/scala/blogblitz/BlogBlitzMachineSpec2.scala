@@ -41,16 +41,15 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
         publishedDateGmt = WordPressApi.GmtInstant(sinceTimestampGmt.plus(1.days)),
         modifiedDateGmt = WordPressApi.GmtInstant(sinceTimestampGmt.plus(1.days)),
         importDateTime = sinceTimestampGmt.plus(1.days),
-        requestUrl = "",
       )
 
-      publishingBlogPostHub.publish(post) *> ZIO.succeed(List(post))
+      publishingBlogPostHub.publish(post).as(List(post))
 
     }
 
   }
 
-  private def mockEmptyfetchAndPublishPostsSinceGmt = new CrawlerService {
+  private def mockEmptyFetchAndPublishPostsSinceGmt = new CrawlerService {
     def fetchAndPublishPostsSinceGmt(
       sinceTimestamp: Instant,
       publishingBlogPostHub: Hub[WordPressApi.BlogPost],
@@ -59,14 +58,14 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
       ZIO.succeed(List.empty)
 
   }
-  def spec = suite("BlogBlitzMachineSpec2")(
+  def spec: Spec[Any, Any] = suite("BlogBlitzMachineSpec2")(
     suite("timestampListener")(
       test("fetches blog posts and updates lastest fetch time") {
         for {
 
           timestampQueue <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
           blogPostHub    <- ZIO.service[Hub[WordPressApi.BlogPost]]
-          crawlMetaData  <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          crawlMetaData  <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
 
           // Initial crawling status should be false
           initialCrawling <- crawlMetaData.isCrawling
@@ -115,7 +114,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
 
           timestampQueue <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
           blogPostHub    <- ZIO.service[Hub[WordPressApi.BlogPost]]
-          crawlMetaData  <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          crawlMetaData  <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
 
           // Initial crawling status should be false
           initialCrawling <- crawlMetaData.isCrawling
@@ -131,7 +130,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
               timestampQueue,
               blogPostHub,
               crawlMetaData,
-              mockEmptyfetchAndPublishPostsSinceGmt,
+              mockEmptyFetchAndPublishPostsSinceGmt,
             )
             .fork
 

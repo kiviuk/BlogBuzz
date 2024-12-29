@@ -13,44 +13,49 @@ import scala.io.Source
 // https://zio.github.io/zio-prelude/docs/functionaldatatypes/validation
 // https://github.com/lightbend/config
 object BlogBlitzConfig:
-  val ENV_VAR      = "APP_ENV"
-  val DEV_ENV      = "dev"
-  val TEST_ENV     = "test"
-  val PROD_ENV     = "prod"
-  val DEFAULT_ENV  = TEST_ENV
-  val NEW_LINE_SEP = "\n"
-  val MIN_PORT     = 1024
-  val MAX_PORT     = 65535
+  private val ENV_VAR      = "APP_ENV"
+  private val DEV_ENV      = "dev"
+  private val TEST_ENV     = "test"
+  private val PROD_ENV     = "prod"
+  private val DEFAULT_ENV  = TEST_ENV
+  private val NEW_LINE_SEP = "\n"
+  private val MIN_PORT     = 1024
+  private val MAX_PORT     = 65535
 
   opaque type Host = String
-  object Host:
+  object Host {
     def apply(value: String): Host        = value
     extension (h: Host) def value: String = h
 
+  }
   opaque type ApiPath = String
-  object ApiPath:
+  object ApiPath {
     def apply(value: String): ApiPath        = value
     extension (a: ApiPath) def value: String = a
 
+  }
   opaque type PerPage = Int
-  object PerPage:
+  object PerPage {
     def apply(value: Int): PerPage        = value
     extension (p: PerPage) def value: Int = p
 
+  }
   opaque type Port = Int
-  object Port:
+  object Port {
     def apply(value: Int): Port        = value
     extension (p: Port) def value: Int = p
 
+  }
   opaque type Path = String
-  object Path:
+  object Path {
     def apply(value: String): Path        = value
     extension (p: Path) def value: String = p
 
+  }
   case class CrawlerConfig(
     host: Host,
     apiPath: ApiPath,
-    perPage: PerPage):
+    perPage: PerPage) {
     def validate: Either[String, Unit] = {
       val errors = List(
         if perPage < 1 || perPage > 100 then
@@ -58,7 +63,7 @@ object BlogBlitzConfig:
             s"WordPress API: perPage: '$perPage' must be between 1 (inclusive) and 100 (inclusive)"
           )
         else None,
-        if !host.startsWith("http") then Some(f"WordPress API: host '${host}' must start with http")
+        if !host.startsWith("http") then Some(f"WordPress API: host '$host' must start with http")
         else None,
       ).flatten
 
@@ -66,9 +71,12 @@ object BlogBlitzConfig:
       else Left(errors.mkString(NEW_LINE_SEP))
     }
 
+  }
+
   // implicit conversion for Instant
-  implicit private val instantConfig: DeriveConfig[Instant] =
+  implicit private val instantConfig: DeriveConfig[Instant] = {
     DeriveConfig[String].map(string => Instant.parse(string))
+  }
 
   // Todo: allow cron-style scheduling
   case class SchedulerConfig(
@@ -91,9 +99,9 @@ object BlogBlitzConfig:
             s"Scheduler: startDateGmt: '$startDateGmt' must be in the past"
           )
         else None,
-        if maxCoolDownScale <= 0 then
+        if maxCoolDownScale < 1 then
           Some(
-            s"Scheduler: maxCoolDownScala: '$maxCoolDownScale' must be greater than 0"
+            s"Scheduler: maxCoolDownScale: integer '$maxCoolDownScale' must be greater than 0."
           )
         else None,
       ).flatten
@@ -107,7 +115,7 @@ object BlogBlitzConfig:
 
   case class WebSocketConfig(
     port: Port,
-    subscribePath: Path):
+    subscribePath: Path) {
     def validate: Either[String, Unit] = {
       val invalidPortRange = port < MIN_PORT || port > MAX_PORT
       val errors = List(
@@ -128,6 +136,7 @@ object BlogBlitzConfig:
     def subscribePathWithPort: Path =
       Path(subscribePath.value.replace("${port}", port.toString))
 
+  }
   // main config that contains all sections
   // note: validation is not eager
   case class Config(
@@ -135,22 +144,38 @@ object BlogBlitzConfig:
     scheduler: SchedulerConfig,
     websocket: WebSocketConfig)
 
-  val config = deriveConfig[Config]
+  val config: zio.Config[Config] = deriveConfig[Config]
 
   def makeLayer(env: String): ZLayer[Any, String, Config] = {
-    ZLayer.fromZIO {
-      val CONFIG_FILE = s"application-$env.yaml"
-      for {
-        source <- ZIO
-          .attempt(Source.fromResource(CONFIG_FILE))
-          .mapError(_ =>
-            s"Configuration file '$CONFIG_FILE' not found for environment: $env." +
-              s" Did you forget to set environment variable '$ENV_VAR' to 'dev', 'test' or 'prod'?"
-          )
 
-        yamlString <- ZIO
-          .attempt(source.mkString)
-          .mapError(_ => s"Failed to read yaml from configuration file '$CONFIG_FILE'")
+    ZLayer.fromZIO {
+
+      val CONFIG_FILE = s"application-$env.yaml"
+
+      def loadResource(fileName: String): ZIO[Any, String, String] = {
+        def openFile(name: => String): ZIO[Any, String, Source] = {
+          ZIO
+            .attemptBlockingIO(Source.fromResource(name))
+            .mapError(err =>
+              s"Configuration file '$name' not found for environment: $env. " +
+                s"Did you forget to set environment variable '$ENV_VAR' to 'dev', 'test' or 'prod'? Error message: $err"
+            )
+        }
+        def closeFile(source: => Source): ZIO[Any, Nothing, Unit] = {
+          ZIO.succeedBlocking(source.close())
+        }
+
+        def readFile(source: => Source): ZIO[Any, String, String] = {
+          ZIO
+            .attemptBlocking(source.mkString)
+            .mapError(err => s"Failed to read yaml from configuration file '$fileName': $err")
+        }
+
+        ZIO.acquireReleaseWith(openFile(fileName))(closeFile(_))(readFile(_))
+      }
+
+      for {
+        yamlString <- loadResource(CONFIG_FILE)
 
         appConfig <- ZIO
           .attempt(ConfigProvider.fromYamlString(yamlString).load(config))
@@ -178,16 +203,17 @@ object BlogBlitzConfig:
     }
   }
 
-  def getEnv: ZIO[Any, Nothing, String] = {
+  private def getEnv: ZIO[Any, Nothing, String] = {
     val env = sys.env.getOrElse(ENV_VAR, DEFAULT_ENV)
-    ZIO.logInfo(
-      s"Reading environment variable '$ENV_VAR': $env (allowed values: $DEV_ENV, $TEST_ENV, $PROD_ENV)"
-    ) *>
-      ZIO.succeed(env)
+    ZIO
+      .logInfo(
+        s"Reading environment variable '$ENV_VAR': $env (allowed values: $DEV_ENV, $TEST_ENV, $PROD_ENV)"
+      )
+      .as(env)
   }
 
-  val layer = ZLayer.fromZIO(getEnv).flatMap(env => makeLayer(env.get))
+  val layer: ZLayer[Any, Path, Config] = ZLayer.fromZIO(getEnv).flatMap(env => makeLayer(env.get))
 
-  val crawlerLayer   = layer.project(_.crawler)
-  val schedulerLayer = layer.project(_.scheduler)
-  val websocketLayer = layer.project(_.websocket)
+  val crawlerLayer: ZLayer[Any, Path, CrawlerConfig]     = layer.project(_.crawler)
+  val schedulerLayer: ZLayer[Any, Path, SchedulerConfig] = layer.project(_.scheduler)
+  val websocketLayer: ZLayer[Any, Path, WebSocketConfig] = layer.project(_.websocket)

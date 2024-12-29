@@ -84,14 +84,14 @@ object Crawler {
         // Log request details
         _ <- ZIO.logInfo(s"""
                             |Request details:
-                            |URL: ${url}
+                            |URL: $url
                             |Parameters:
-                            | - ${PER_PAGE}: ${config.perPage}
-                            | - ${AFTER}: $sinceTimestamp
-                            | - ${MODIFIED_AFTER}: $sinceTimestamp
-                            | - ${ORDERBY}: ${ORDER_BY_DATE}
-                            | - ${ORDER}: ${ASC}
-                            | - ${PAGE}: $page
+                            | - $PER_PAGE: ${config.perPage}
+                            | - $AFTER: $sinceTimestamp
+                            | - $MODIFIED_AFTER: $sinceTimestamp
+                            | - $ORDERBY: $ORDER_BY_DATE
+                            | - $ORDER: $ASC
+                            | - $PAGE: $page
                             |""".stripMargin)
 
         // Make the request and handle timeout
@@ -184,7 +184,7 @@ trait CrawlerService {
 object CrawlerService {
   val layer: ZLayer[Client & CrawlerConfig, Nothing, CrawlerService] =
     ZLayer.fromFunction { (client: Client, config: CrawlerConfig) =>
-      new CrawlerService:
+      new CrawlerService {
         def fetchAndPublishPostsSinceGmt(
           sinceTimestamp: Instant,
           publishingBlogPostHub: Hub[WordPressApi.BlogPost],
@@ -193,6 +193,7 @@ object CrawlerService {
             .WordPressCrawler
             .fetchAndPublishPostsSinceGmt(sinceTimestamp, publishingBlogPostHub)
             .provide(ZLayer.succeed(client), ZLayer.succeed(config))
+      }
     }
 
 }

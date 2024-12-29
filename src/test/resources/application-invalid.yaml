@@ -10,4 +10,4 @@ scheduler:
 
 websocket:
   port: 88080
-  subscribePath: "ws://localhost:${port}/subscribe/v1"
+  subscribePath: "ws://localhost:${port}/subscribe/v2"

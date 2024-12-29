@@ -33,7 +33,6 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
           publishedDateGmt = WordPressApi.GmtInstant(lastModifiedGmt.minus(1.days)),
           modifiedDateGmt = WordPressApi.GmtInstant(lastModifiedGmt.minus(1.days)),
           importDateTime = lastModifiedGmt.plus(1.days),
-          requestUrl = "",
         )
       )
     }
@@ -44,33 +43,33 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
     (actual.pathCodec.toString == expected.pathCodec.toString)
   }
 
-  def spec = suite("BlogBlitzMachineSpec")(
+  def spec: Spec[Any, Any] = suite("BlogBlitzMachineSpec")(
     suite("getPathSegments")(
       test("should extract correct segments from valid URLs") {
         assertTrue(
-          BlogBlitzMachine.getPathSegments("http://localhost:8888/subscribe/v1") == Some(
-            ("subscribe", "v1")
-          ),
-          BlogBlitzMachine.getPathSegments("http://localhost:9999/subscribe/v1") == Some(
-            ("subscribe", "v1")
-          ),
+          BlogBlitzMachine
+            .getPathSegments("http://localhost:8888/subscribe/v2")
+            .contains(("subscribe", "v2")),
+          BlogBlitzMachine
+            .getPathSegments("http://localhost:9999/subscribe/v2")
+            .contains(("subscribe", "v2")),
         )
       },
       test("should handle path with port placeholder") {
         assertTrue(
-          BlogBlitzMachine.getPathSegments("http://localhost:${port}/subscribe/v1") == Some(
-            ("subscribe", "v1")
-          )
+          BlogBlitzMachine
+            .getPathSegments("http://localhost:${port}/subscribe/v2")
+            .contains(("subscribe", "v2"))
         )
       },
       test("should handle path with invalid segments") {
         assertTrue(
-          BlogBlitzMachine.getPathSegments("what?/http://localhost:${port}/subscribe/v1") == None
+          BlogBlitzMachine.getPathSegments("what?/http://localhost:${port}/subscribe/v2").isEmpty
         )
       },
       test("should handle empty path") {
         assertTrue(
-          BlogBlitzMachine.getPathSegments("${port}") == None
+          BlogBlitzMachine.getPathSegments("${port}").isEmpty
         )
       },
     ),
@@ -78,8 +77,8 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
       test("should make correct route for valid segments") {
         assertTrue(
           compareRoutePatterns(
-            BlogBlitzMachine.makeSocketRoute(("subscribe", "v1")),
-            Method.GET / "subscribe" / "v1",
+            BlogBlitzMachine.makeSocketRoute(("subscribe", "v2")),
+            Method.GET / "subscribe" / "v2",
           )
         )
       },
@@ -108,7 +107,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
       test("publishes periodic timestamp events to the hub") {
         for {
           queue           <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
-          crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
 
           log <- ZIO.logInfo(
@@ -125,7 +124,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
 
           // Event 1 happens immediately (without advancing the clock)
           event1 <- queue.take
-          _      <- ZIO.logInfo(s"Got event1: ${event1}")
+          _      <- ZIO.logInfo(s"Got event1: $event1")
 
           // Update last fetch time for the next event
           _ <- crawlMetaData.setLastModifiedGmt(laterTime)
@@ -134,7 +133,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
           _ <- TestClock.adjust(TimestampInterval)
 
           event2 <- queue.take
-          _      <- ZIO.logInfo(s"Got event2: ${event2}")
+          _      <- ZIO.logInfo(s"Got event2: $event2")
 
           _ <- fiber.interrupt
         } yield assertTrue(
@@ -144,7 +143,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
       test("skips emitting events when crawling is in progress") {
         for {
           queue           <- ZIO.service[Queue[BlogBlitzMachine.TimestampEvent]]
-          crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
 
           _ <- TestClock.setTime(sinceTimestampGmt)

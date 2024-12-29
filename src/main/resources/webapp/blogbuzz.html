@@ -2,149 +2,149 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlogBuzz</title>
-    <style>
-        body {
-            background-color: #050505;
-            color: #e0e0e0;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlogBuzz</title>
+  <style>
+    body {
+      background-color: #050505;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
 
-        #output {
-            height: 90vh;
-            width: 850px;
-            text-align: left;
-            overflow-y: scroll;
-            overflow-x: scroll;
-            border-radius: 5px;
-            padding: 3px;
-            border: solid purple 2px;
-        }
+    #output {
+      height: 90vh;
+      width: 850px;
+      text-align: left;
+      overflow-y: scroll;
+      overflow-x: scroll;
+      border-radius: 5px;
+      padding: 3px;
+      border: solid purple 2px;
+    }
 
-        .message {
-            margin-bottom: 10px;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 5px;
-            white-space: nowrap;
-        }
+    .message {
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+      white-space: nowrap;
+    }
 
-        .message strong {
-            display: block;
-            margin-bottom: 8px 8px;
-        }
+    .message strong {
+      display: block;
+      margin-bottom: 8px 8px;
+    }
 
-        .message div {
-            margin-top: 10px;
-        }
+    .message div {
+      margin-top: 10px;
+    }
 
-        .word-count {
-            background-color: #2d353d;
-            color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            white-space: nowrap;
-            margin-top: 5px;
-            margin-right: 8px;
-            padding: 2px 5px;
-        }
-    </style>
+    .word-count {
+      background-color: #2d353d;
+      color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      white-space: nowrap;
+      margin-top: 5px;
+      margin-right: 8px;
+      padding: 2px 5px;
+    }
+  </style>
 </head>
 
 <body>
-    <div>
-        <div id="output">
-            Welcome to BlogBuzz!
-            <br />
-            <br />
-            Hit ENTER in the server console to start crawling for messages.
-        </div>
-        <br />
+  <div>
+    <div id="output">
+      Welcome to BlogBuzz!
+      <br />
+      <br />
+      Hit ENTER in the server console to start crawling for messages.
     </div>
-    <script>
-        const output = document.getElementById("output");
+    <br />
+  </div>
+  <script>
+    const output = document.getElementById("output");
 
-        // WebSocket connection
-        const socket = new WebSocket("ws://localhost:8888/subscribe/v1");
+    // WebSocket connection
+    const socket = new WebSocket("ws://localhost:8888/subscribe/v2");
 
-        // Array to hold incoming data to sort and display
-        let dataList = [];
+    // Array to hold incoming data to sort and display
+    let dataList = [];
 
-        // Utility function to sanitize text (escape HTML special characters)
-        function sanitizeText(text) {
-            const div = document.createElement('div');
-            div.textContent = text; // Insert text content to escape HTML
-            return div.innerHTML;  // Return the sanitized HTML
-        }
+    // Utility function to sanitize text (escape HTML special characters)
+    function sanitizeText(text) {
+      const div = document.createElement('div');
+      div.textContent = text; // Insert text content to escape HTML
+      return div.innerHTML;  // Return the sanitized HTML
+    }
 
-        // WebSocket event listeners
-        socket.onmessage = function (event) {
-            try {
-                // Parse JSON data from the server
-                const data = JSON.parse(event.data);
+    // WebSocket event listeners
+    socket.onmessage = function (event) {
+      try {
+        // Parse JSON data from the server
+        const data = JSON.parse(event.data);
 
-                // Add the new data to the list
-                dataList.push(data);
+        // Add the new data to the list
+        dataList.push(data);
 
-                // Sort the list by modifiedDateGmt (most recent first)
-                dataList.sort((a, b) => new Date(b.modifiedDateGmt) - new Date(a.modifiedDateGmt));
+        // Sort the list by modifiedDateGmt (most recent first)
+        dataList.sort((a, b) => new Date(b.modifiedDateGmt) - new Date(a.modifiedDateGmt));
 
-                // Update the display
-                renderData();
-            } catch (e) {
-                console.error("Invalid JSON received from server:", event.data);
-                output.append("[Error] Invalid JSON data received.\n");
-            }
-        };
+        // Update the display
+        renderData();
+      } catch (e) {
+        console.error("Invalid JSON received from server:", event.data);
+        output.append("[Error] Invalid JSON data received.\n");
+      }
+    };
 
-        socket.onclose = function (event) {
-            output.append("[Closed] Server connection ended\n");
-        };
+    socket.onclose = function (event) {
+      output.append("[Closed] Server connection ended\n");
+    };
 
-        socket.onerror = function (error) {
-            output.append("[Error] An error occurred while processing data\n");
-            console.log("[Error]", error);
-        };
+    socket.onerror = function (error) {
+      output.append("[Error] An error occurred while processing data\n");
+      console.log("[Error]", error);
+    };
 
-        form.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const message = document.getElementById('entry').value;
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const message = document.getElementById('entry').value;
 
-            // Send input message to WebSocket server
-            if (message.trim() !== "") {
-                socket.send(message);
-                document.getElementById('entry').value = '';
-            }
-        });
+      // Send input message to WebSocket server
+      if (message.trim() !== "") {
+        socket.send(message);
+        document.getElementById('entry').value = '';
+      }
+    });
 
-        /**
-         * Function to render the sorted data in the #output area.
-         */
-        function renderData() {
-            // Clear the output area before re-rendering
-            output.innerHTML = "";
+    /**
+     * Function to render the sorted data in the #output area.
+     */
+    function renderData() {
+      // Clear the output area before re-rendering
+      output.innerHTML = "";
 
-            // Render all objects in the dataList array
-            dataList.forEach((item) => {
-                const messageDiv = document.createElement("div");
-                messageDiv.className = "message";
+      // Render all objects in the dataList array
+      dataList.forEach((item) => {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "message";
 
-                // Extract sanitized values or default if missing
-                const title = item.title ? sanitizeText(item.title) : "[Unknown Title]";
-                const importedDate = item.importDateTime ? sanitizeText(item.importDateTime) : "[Unknown Imported Date]";
-                const publishedDate = item.publishedDateGmt ? sanitizeText(item.publishedDateGmt) : "[Unknown Published Date]";
-                const modifiedDate = item.modifiedDateGmt ? sanitizeText(item.modifiedDateGmt) : "[Unknown Modified Date]";
-                const link = item.link ? sanitizeText(item.link) : "#";
+        // Extract sanitized values or default if missing
+        const title = item.title ? sanitizeText(item.title) : "[Unknown Title]";
+        const importedDate = item.importDateTime ? sanitizeText(item.importDateTime) : "[Unknown Imported Date]";
+        const publishedDate = item.publishedDateGmt ? sanitizeText(item.publishedDateGmt) : "[Unknown Published Date]";
+        const modifiedDate = item.modifiedDateGmt ? sanitizeText(item.modifiedDateGmt) : "[Unknown Modified Date]";
+        const link = item.link ? sanitizeText(item.link) : "#";
 
-                // Extract at most the first 10 top ranking words from the wordCountMap
-                const wordCountMap = Array.isArray(item.wordCountMap) ? item.wordCountMap.slice(0, 10) : [];
-                const wordCountToDisplay = wordCountMap.length > 10 ? 10 : wordCountMap.length;
+        // Extract at most the first 10 top ranking words from the wordCountMap
+        const wordCountMap = Array.isArray(item.wordCountMap) ? item.wordCountMap.slice(0, 10) : [];
+        const wordCountToDisplay = wordCountMap.length > 10 ? 10 : wordCountMap.length;
 
-                // Create the basic structure
-                messageDiv.innerHTML = `
+        // Create the basic structure
+        messageDiv.innerHTML = `
                     <strong>Title:</strong> ${title} <br>
                     <strong>Imported Date:</strong> ${importedDate} <br>
                     <strong>Published Date:</strong> ${publishedDate} <br>
@@ -156,39 +156,39 @@
                 `;
 
 
-                // Create a container for word count spans
-                const wordCountContainer = document.createElement("div");
+        // Create a container for word count spans
+        const wordCountContainer = document.createElement("div");
 
-                // Process all word-count pairs
-                wordCountMap.forEach(pair => {
-                    if (Array.isArray(pair) && typeof pair[0] === "string" && typeof pair[1] === "number") {
-                        const sanitizedWord = sanitizeText(pair[0]);
-                        const count = pair[1];
+        // Process all word-count pairs
+        wordCountMap.forEach(pair => {
+          if (Array.isArray(pair) && typeof pair[0] === "string" && typeof pair[1] === "number") {
+            const sanitizedWord = sanitizeText(pair[0]);
+            const count = pair[1];
 
-                        // Create the span for the word count
-                        const wordSpan = document.createElement("span");
-                        wordSpan.className = "word-count";
-                        wordSpan.textContent = `${sanitizedWord}: ${count}`;
-                        wordCountContainer.appendChild(wordSpan);
-                    }
-                });
+            // Create the span for the word count
+            const wordSpan = document.createElement("span");
+            wordSpan.className = "word-count";
+            wordSpan.textContent = `${sanitizedWord}: ${count}`;
+            wordCountContainer.appendChild(wordSpan);
+          }
+        });
 
-                if (wordCountMap.length >= 10) {
-                    // Create ellipsis span for "..."
-                    const wordSpan = document.createElement("span");
-                    wordSpan.className = "word-count";
-                    wordSpan.textContent = `...`;
-                    wordCountContainer.appendChild(wordSpan);
-                }
-
-                // Append the word count container to the message div
-                messageDiv.appendChild(wordCountContainer);
-
-                // Append the message div to the output area
-                output.appendChild(messageDiv);
-            });
+        if (wordCountMap.length >= 10) {
+          // Create ellipsis span for "..."
+          const wordSpan = document.createElement("span");
+          wordSpan.className = "word-count";
+          wordSpan.textContent = `...`;
+          wordCountContainer.appendChild(wordSpan);
         }
-    </script>
+
+        // Append the word count container to the message div
+        messageDiv.appendChild(wordCountContainer);
+
+        // Append the message div to the output area
+        output.appendChild(messageDiv);
+      });
+    }
+  </script>
 </body>
 
 </html>

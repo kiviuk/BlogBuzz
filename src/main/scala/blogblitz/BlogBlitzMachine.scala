@@ -1,7 +1,5 @@
 package blogblitz
 
-import blogblitz.BlogBlitzConfig.CrawlerConfig
-import blogblitz.BlogBlitzConfig.WebSocketConfig
 import zio.*
 import zio.http.ChannelEvent.Read
 import zio.http.*
@@ -9,6 +7,9 @@ import zio.logging.backend.SLF4J
 import zio.stream.ZStream
 
 import java.time.Instant
+
+import blogblitz.BlogBlitzConfig.CrawlerConfig
+import blogblitz.BlogBlitzConfig.WebSocketConfig
 
 /*
  * Core application
@@ -18,11 +19,11 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
   val PATH_SEPARATOR = "/"
 
-  val STATIC_URL_PATH = Path.empty / "static"
+  private val STATIC_URL_PATH = Path.empty / "static"
 
-  val RESOURCES_WEBAPP_PATH = "webapp"
+  private val RESOURCES_WEBAPP_PATH = "webapp"
 
-  val INVALID_ROUTE = Method.GET / "invalid" / "path" / "v1"
+  val INVALID_ROUTE: RoutePattern[Unit] = Method.GET / "invalid" / "path" / "v2"
 
   case class CrawlState(isCrawling: Boolean)
   case class TimestampEvent(sinceTimestampGmt: Instant)
@@ -45,7 +46,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     Handler.webSocket { channel =>
       // Forward blog posts to WebSocket clients
       val blogPostSubscriber = blogPostSocketStream.foreach { message =>
-        channel.send(Read(message)).catchAll(_ => ZIO.unit)
+        channel.send(Read(message)).ignore
       }
 
       // Handle incoming WebSocket messages
@@ -60,13 +61,13 @@ object BlogBlitzMachine extends ZIOAppDefault {
           ZIO.unit
       }
 
-      // run both streams parallelly
+      // run both streams parallel
       messageHandler.race(blogPostSubscriber)
     }
   }
 
   // Creates single ZIO route for the WebSocket server
-  def makeSocketRoute(segments: (String, String) = ("", "")) = {
+  def makeSocketRoute(segments: (String, String) = ("", "")): RoutePattern[Unit] = {
     val cleanSegments = (
       Option(segments._1).getOrElse("").trim,
       Option(segments._2).getOrElse("").trim,
@@ -79,7 +80,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
   }
 
   // Extracts path segments from the configuration
-  // path: "ws://localhost:${port}/subscribe/v1"
+  // path: "ws://localhost:${port}/subscribe/v2"
   def getPathSegments(path: String): Option[(String, String)] = {
     val segments = path.trim.split(PATH_SEPARATOR).toList.filterNot(_.isEmpty)
 
@@ -104,7 +105,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
             createSocketHandlerAndBindStream(newBlogPostStream(blogPostHub)).toResponse
           )
         )
-      case _ => // invald path
+      case _ => // invalid path
         throw new IllegalArgumentException(
           s"Invalid subscribe path: ${config.subscribePath.value}"
         )
@@ -120,7 +121,8 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
     for {
       _ <- ZIO.logInfo(
-        s"Socket server ready at ws://localhost:${config.port.value}/subscribe/v1"
+        s"WebSocket server ready at ${config.subscribePath}"
+          .replace("${port}", config.port.value.toString)
       )
       _ <- ZIO.logInfo(
         s"HTTP server ready at http://localhost:${config.port.value}/static/blogbuzz.html"
@@ -139,10 +141,10 @@ object BlogBlitzMachine extends ZIOAppDefault {
   // Event queue ensures work items are processed sequentially in the order they are added (emits heartbeat)
   def timeStampEmitter(
     eventQueue: Queue[TimestampEvent],
-    crawlMetaData: CrawlerMeta.CrawlMetadata,
+    crawlMetaData: CrawlerMeta.CrawlMetaDataService,
     schedulerConfig: BlogBlitzConfig.SchedulerConfig,
   ): ZIO[Any, Nothing, Unit] = {
-    import CrawlerMeta._
+
     (for {
       // Keep the queue free from noise.
       // Only submit events, if crawler is free.
@@ -184,7 +186,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
   def timestampListener(
     queue: Queue[TimestampEvent],
     publishingBlogPostHub: Hub[WordPressApi.BlogPost],
-    crawlMetaData: CrawlerMeta.CrawlMetadata,
+    crawlMetaData: CrawlerMeta.CrawlMetaDataService,
     crawlerService: CrawlerService,
   ): ZIO[Client & CrawlerConfig, Nothing, Unit] = {
     import WordPressApi.BlogPost
@@ -211,7 +213,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
           error =>
             ZIO
               .logError(
-                s"WordPress fetch failed: ${error} for event: ${event.sinceTimestampGmt}"
+                s"WordPress fetch failed: $error for event: ${event.sinceTimestampGmt}"
               ) *>
               crawlMetaData
                 .setPreviousCrawlState(PreviousCrawlState.Failure)
@@ -255,9 +257,21 @@ object BlogBlitzMachine extends ZIOAppDefault {
     yield ()).forever
   }
 
-  override val bootstrap = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+  // evaluates the state of the previous crawl to determine if it was successful or not.
+  private object CrawlStateEvaluator {
+    import CrawlerMeta._
 
-  override def run = {
+    private def successful(state: PreviousCrawlState): Boolean =
+      state == PreviousCrawlState.Successful || state == PreviousCrawlState.NotYetCrawled
+
+    def unsuccessful(state: PreviousCrawlState): Boolean = !successful(state)
+
+  }
+
+  override val bootstrap: ZLayer[ZIOAppArgs, Any, Unit] =
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+
+  override def run: URIO[Any, ExitCode] = {
 
     // TODO: automatically wait for some websocket client to connect before running the crawler?
     // and stop crawler if no client is connected
@@ -266,11 +280,11 @@ object BlogBlitzMachine extends ZIOAppDefault {
     val program = for {
       timestampQueue  <- Queue.bounded[TimestampEvent](QUEUE_CAPACITY)
       blogPostHub     <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
-      crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetadata]
+      crawlMetaData   <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
       schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
       crawlerConfig   <- ZIO.service[BlogBlitzConfig.CrawlerConfig]
+      wsConfig        <- ZIO.service[BlogBlitzConfig.WebSocketConfig]
       crawlerService  <- ZIO.service[CrawlerService]
-      wsConfig        <- ZIO.service[WebSocketConfig]
 
       _ <- ZIO.logInfo("Starting blog buzz...")
       _ <- ZIO.logInfo(s"Scheduler config: $schedulerConfig")
@@ -280,7 +294,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
       serverFiber <- startServer(wsConfig, blogPostHub).fork
       _           <- ZIO.logInfo("WebSocket server is running")
       _ <- ZIO.logInfo(
-        s"Test: wscat -c ws://localhost:${wsConfig.port.value}/subscribe/v1"
+        s"Test: wscat -c ws://localhost:${wsConfig.port.value}/subscribe/v2"
       )
 
       _ <- ZIO.logInfo("Press ENTER to continue...and ENTER again to quit") *> Console.readLine
@@ -323,6 +337,10 @@ object BlogBlitzMachine extends ZIOAppDefault {
           Console.printLineError(s"System failed with error: $err")
         case err: String =>
           Console.printLineError(s"System failed with error: $err")
+        case _ =>
+          Console.printLineError(
+            "System failed with unknown error. Please check logs for more details."
+          )
       }
       .exitCode
   }

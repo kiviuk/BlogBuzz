@@ -8,22 +8,22 @@ import java.time.temporal.ChronoUnit._
 import zio.logging.backend.SLF4J
 
 object BlogPostMetaSpec extends ZIOSpecDefault {
-  def spec = suite("BlogPostMetaSpec")(
+  def spec: Spec[Any, Any] = suite("BlogPostMetaSpec")(
     suite("CrawlMetadata")(
       test("should start with epoch time and not crawling") {
         for {
-          meta          <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          meta          <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           initialTime   <- meta.getLastModifiedGmt
           initialStatus <- meta.isCrawling
         } yield assertTrue(
           // set a time barrier 2 days in the past for fetching, to avoid too many requests
           initialTime.isBefore(Instant.now()),
-          initialStatus == false,
+          !initialStatus,
         )
       },
       test("should update last fetched time") {
         for {
-          meta <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          meta <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           now = Instant.now()
           _       <- meta.setLastModifiedGmt(now)
           updated <- meta.getLastModifiedGmt
@@ -31,14 +31,14 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
       },
       test("should update crawling status") {
         for {
-          meta   <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          meta   <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           _      <- meta.activateCrawling
           status <- meta.isCrawling
-        } yield assertTrue(status == true)
+        } yield assertTrue(status)
       },
       test("should handle multiple updates atomically") {
         for {
-          meta <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          meta <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           now = Instant.now()
           fiber1  <- meta.setLastModifiedGmt(now).fork
           fiber2  <- meta.activateCrawling.fork
@@ -51,13 +51,13 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
           status2 <- meta.isCrawling
         } yield assertTrue(
           time == now,
-          status1 == false,
-          status2 == false,
+          !status1,
+          !status2,
         )
       },
       test("should maintain independent state for time and status") {
         for {
-          meta <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          meta <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           time1 = Instant.now().minusSeconds(3600)
           _ <- meta.setLastModifiedGmt(time1)
           _ <- meta.activateCrawling
@@ -67,12 +67,12 @@ object BlogPostMetaSpec extends ZIOSpecDefault {
           finalStatus <- meta.isCrawling
         } yield assertTrue(
           finalTime == time2,
-          finalStatus == true,
+          finalStatus,
         )
       },
       test("should throw an error when setting a future timestamp") {
         for {
-          meta <- ZIO.service[CrawlerMeta.CrawlMetadata]
+          meta <- ZIO.service[CrawlerMeta.CrawlMetaDataService]
           pastTime = Instant.now().minusSeconds(3600)
           _ <- meta.setLastModifiedGmt(pastTime)
           futureTime = Instant.now().plusSeconds(3600)
