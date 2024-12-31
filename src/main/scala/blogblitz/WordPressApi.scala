@@ -7,6 +7,7 @@ import java.time.Instant
 // WordPress API integration
 // https://developer.wordpress.org/rest-api/reference/posts/
 object WordPressApi {
+  val MAX_PER_PAGE_BY_WP = 100
 
   // WordPress GMT timestamps are in a non-standard format, should be ISO-8601
   implicit val instantGmtDecoder: JsonDecoder[Instant] = {
@@ -28,6 +29,7 @@ object WordPressApi {
 
     implicit val decoder: JsonDecoder[GmtInstant] =
       instantGmtDecoder.map(GmtInstant(_))
+
   }
 
   // Inbound WordPress post
@@ -63,19 +65,23 @@ object WordPressApi {
 
   object Title {
     implicit val decoder: JsonDecoder[Title] = DeriveJsonDecoder.gen[Title]
+
   }
 
   object Content {
     implicit val decoder: JsonDecoder[Content] = DeriveJsonDecoder.gen[Content]
+
   }
 
   object Guid {
     implicit val decoder: JsonDecoder[Guid] = DeriveJsonDecoder.gen[Guid]
+
   }
 
   object BlogPost {
     implicit val decoder: JsonDecoder[BlogPost] =
       DeriveJsonDecoder.gen[BlogPost]
+
   }
   case class OutboundBlogPost(
     id: Int,
@@ -144,18 +150,27 @@ object WordPressApi {
   }
 
   // Ping post to signal that we are still alive even if there are no new posts
-  def pingPost(): BlogPost =
+  def pingPost(): BlogPost = {
+    object PingPostDefaults {
+      val title = WordPressApi.Title("No new posts, still I am alive! Repeat: I AM STILL ALIVE!")
+      val content =
+        WordPressApi.Content("No new posts still I am alive Repeat I AM STILL ALIVE")
+      val guid = WordPressApi.Guid("ping-post")
+    }
+
+    val now    = Instant.now()
+    val nowGmt = GmtInstant(now)
+
     WordPressApi.BlogPost(
-      id = Instant.now.toEpochMilli.toInt,
-      title =
-        WordPressApi.Title(rendered = "No new posts, still I am alive! Repeat: I AM STILL ALIVE !"),
-      content =
-        WordPressApi.Content(rendered = "no new posts still I am alive repeat I am still alive"),
-      guid = WordPressApi.Guid(rendered = ""),
-      link = "",
-      publishedDateGmt = WordPressApi.GmtInstant(Instant.now),
-      modifiedDateGmt = WordPressApi.GmtInstant(Instant.now()),
-      importDateTime = Instant.now,
+      id = Math.abs(now.toEpochMilli.hashCode),
+      title = PingPostDefaults.title,
+      content = PingPostDefaults.content,
+      guid = PingPostDefaults.guid,
+      link = "/ping",
+      publishedDateGmt = nowGmt,
+      modifiedDateGmt = nowGmt,
+      importDateTime = now,
     )
+  }
 
 }

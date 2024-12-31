@@ -5,9 +5,9 @@ crawler:
 
 scheduler:
   intervalInSec: 1
-  startDateGmt: "2024-12-23T00:00:00Z"
-  maxCoolDownScale: 3
+  startDateGmt: "3000-01-01T00:00:00Z"
+  maxCoolDownScale: 0
 
 websocket:
   port: 88080
-  subscribePath: "ws://localhost:${port}/subscribe/v2"
+  subscribePath: "ws://localhost:$port/subscribe/v2"

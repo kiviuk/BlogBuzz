@@ -234,10 +234,11 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
     ),
     suite("WebSocketConfig")(
       test("should have WebSocket paths with hardcoded port values") {
+
         val configProvider = ConfigProvider.fromYamlString(validYaml)
         val result =
           configProvider.load(BlogBlitzConfig.config).map { config =>
-            config.websocket.subscribePathWithPort
+            config.websocket.subscribePath.value.replace("${port}", config.websocket.port.toString)
           }
 
         assertZIO(result)(

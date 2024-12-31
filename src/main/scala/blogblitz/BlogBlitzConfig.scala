@@ -13,14 +13,15 @@ import scala.io.Source
 // https://zio.github.io/zio-prelude/docs/functionaldatatypes/validation
 // https://github.com/lightbend/config
 object BlogBlitzConfig:
-  private val ENV_VAR      = "APP_ENV"
-  private val DEV_ENV      = "dev"
-  private val TEST_ENV     = "test"
-  private val PROD_ENV     = "prod"
-  private val DEFAULT_ENV  = TEST_ENV
-  private val NEW_LINE_SEP = "\n"
-  private val MIN_PORT     = 1024
-  private val MAX_PORT     = 65535
+  private val ENV_VAR         = "APP_ENV"
+  private val DEV_ENV         = "dev"
+  private val TEST_ENV        = "test"
+  private val PROD_ENV        = "prod"
+  private val DEFAULT_ENV     = TEST_ENV
+  private val NEW_LINE_SEP    = java.lang.System.lineSeparator
+  private val MIN_PORT        = 1024
+  private val MAX_PORT        = 65535
+  private val ONE_HOUR_IN_SEC = 60 * 60
 
   opaque type Host = String
   object Host {
@@ -56,16 +57,30 @@ object BlogBlitzConfig:
     host: Host,
     apiPath: ApiPath,
     perPage: PerPage) {
+    object CrawlerConfigErrors {
+      val InvalidPerPage: String => String = perPage =>
+        s"WordPress API: perPage: '$perPage' must be between 1 (inclusive) and ${WordPressApi.MAX_PER_PAGE_BY_WP} (inclusive)"
+
+      val InvalidHost: String => String = host =>
+        s"WordPress API: host '$host' must start with http"
+
+    }
     def validate: Either[String, Unit] = {
-      val errors = List(
-        if perPage < 1 || perPage > 100 then
-          Some(
-            s"WordPress API: perPage: '$perPage' must be between 1 (inclusive) and 100 (inclusive)"
-          )
-        else None,
-        if !host.startsWith("http") then Some(f"WordPress API: host '$host' must start with http")
-        else None,
-      ).flatten
+
+      val invalidPerPage = perPage < 1 || perPage > WordPressApi.MAX_PER_PAGE_BY_WP
+      val invalidHost    = !host.startsWith("http")
+
+      val perPageError =
+        if (invalidPerPage)
+          Some(CrawlerConfigErrors.InvalidPerPage(perPage.toString))
+        else None
+
+      val hostError =
+        if (invalidHost) Some(CrawlerConfigErrors.InvalidHost(host))
+        else None
+
+      // Collect all errors
+      val errors = List(perPageError, hostError).flatten
 
       if errors.isEmpty then Right(())
       else Left(errors.mkString(NEW_LINE_SEP))
@@ -83,28 +98,39 @@ object BlogBlitzConfig:
     intervalInSec: Int,
     startDateGmt: Instant,
     maxCoolDownScale: Int) {
-    def validate: Either[String, Unit] = {
-      val oneHourInSec      = 60 * 60
-      val isInvalidInterval = intervalInSec <= 0 || intervalInSec > oneHourInSec
+    object SchedulerConfigErrors {
+      val invalidInterval: Int => String = interval =>
+        s"Scheduler: interval (seconds): '$interval' must be between 1 (inclusive) and $ONE_HOUR_IN_SEC (inclusive)."
 
-      val errors = List(
-        if isInvalidInterval then
-          Some(
-            s"Scheduler: interval (seconds): '$intervalInSec' must be between 1 (inclusive) and" +
-              s" $oneHourInSec (inclusive)"
-          )
-        else None,
-        if startDateGmt.isAfter(Instant.now()) then
-          Some(
-            s"Scheduler: startDateGmt: '$startDateGmt' must be in the past"
-          )
-        else None,
-        if maxCoolDownScale < 1 then
-          Some(
-            s"Scheduler: maxCoolDownScale: integer '$maxCoolDownScale' must be greater than 0."
-          )
-        else None,
-      ).flatten
+      val invalidStartDate: Instant => String = startDate =>
+        s"Scheduler: startDateGmt: '$startDate' must be in the past."
+
+      val invalidCoolDownScale: Int => String = scale =>
+        s"Scheduler: maxCoolDownScale: integer '$scale' must be greater than 0."
+
+    }
+
+    def validate: Either[String, Unit] = {
+      val now = Instant.now()
+
+      val isInvalidInterval  = intervalInSec <= 0 || intervalInSec > ONE_HOUR_IN_SEC
+      val isInvalidStartDate = startDateGmt.isAfter(now)
+      val isInvalidCoolDown  = maxCoolDownScale < 1
+
+      val intervalError =
+        if (isInvalidInterval)
+          Some(SchedulerConfigErrors.invalidInterval(intervalInSec))
+        else None
+
+      val startDateError =
+        if (isInvalidStartDate) Some(SchedulerConfigErrors.invalidStartDate(startDateGmt))
+        else None
+
+      val coolDownError =
+        if (isInvalidCoolDown) Some(SchedulerConfigErrors.invalidCoolDownScale(maxCoolDownScale))
+        else None
+
+      val errors = List(intervalError, startDateError, coolDownError).flatten
 
       if errors.isEmpty then Right(())
       else Left(errors.mkString(NEW_LINE_SEP))
@@ -116,25 +142,31 @@ object BlogBlitzConfig:
   case class WebSocketConfig(
     port: Port,
     subscribePath: Path) {
+    object WebSocketConfigErrors {
+      val invalidPort: Port => String = port =>
+        s"WebSocket: port: '$port' must be between $MIN_PORT and $MAX_PORT"
+
+      val emptySubscribePath: String =
+        "WebSocket: subscribePath cannot be empty"
+
+      val missingPortPlaceholder: String =
+        "WebSocket: subscribePath must contain '${port}' placeholder"
+
+    }
     def validate: Either[String, Unit] = {
-      val invalidPortRange = port < MIN_PORT || port > MAX_PORT
+      val invalidPortRange       = port < MIN_PORT || port > MAX_PORT
+      val emptySubscribePath     = subscribePath.isEmpty
+      val missingPortPlaceholder = !subscribePath.value.contains("${port}")
+
       val errors = List(
-        if invalidPortRange then
-          Some(s"WebSocket: port: '$port' must be between $MIN_PORT and $MAX_PORT")
-        else None,
-        if subscribePath.isEmpty then Some("WebSocket: subscribePath cannot be empty")
-        else None,
-        if !subscribePath.value.contains("${port}") then
-          Some("WebSocket: subscribePath must contain '${port}' placeholder")
-        else None,
+        if (invalidPortRange) Some(WebSocketConfigErrors.invalidPort(port)) else None,
+        if (emptySubscribePath) Some(WebSocketConfigErrors.emptySubscribePath) else None,
+        if (missingPortPlaceholder) Some(WebSocketConfigErrors.missingPortPlaceholder) else None,
       ).flatten
 
       if errors.isEmpty then Right(())
       else Left(errors.mkString(NEW_LINE_SEP))
     }
-
-    def subscribePathWithPort: Path =
-      Path(subscribePath.value.replace("${port}", port.toString))
 
   }
   // main config that contains all sections
@@ -148,58 +180,76 @@ object BlogBlitzConfig:
 
   def makeLayer(env: String): ZLayer[Any, String, Config] = {
 
-    ZLayer.fromZIO {
+    object ConfigLoaderErrors {
 
-      val CONFIG_FILE = s"application-$env.yaml"
+      val fileNotFound: String => String = fileName =>
+        s"Configuration file '$fileName' not found for environment: $env. " +
+          s"Did you forget to set environment variable '$ENV_VAR' to 'dev', 'test' or 'prod'?"
+
+      val fileReadError: String => String =
+        fileName => s"Failed to read yaml from configuration file '$fileName'."
+
+      val parseError: String => String =
+        fileName => s"Failed to parse configuration in file '$fileName'"
+
+      val validationError: String => String =
+        fileName => s"Configuration validation failed for file '$fileName'"
+
+    }
+
+    val CONFIG_FILE = s"application-$env.yaml"
+
+    ZLayer.fromZIO {
 
       def loadResource(fileName: String): ZIO[Any, String, String] = {
         def openFile(name: => String): ZIO[Any, String, Source] = {
           ZIO
             .attemptBlockingIO(Source.fromResource(name))
-            .mapError(err =>
-              s"Configuration file '$name' not found for environment: $env. " +
-                s"Did you forget to set environment variable '$ENV_VAR' to 'dev', 'test' or 'prod'? Error message: $err"
-            )
+            .mapError(err => ConfigLoaderErrors.fileNotFound(name) + s" Error message: $err")
         }
-        def closeFile(source: => Source): ZIO[Any, Nothing, Unit] = {
+        def closeFile(source: Source): ZIO[Any, Nothing, Unit] = {
           ZIO.succeedBlocking(source.close())
         }
 
-        def readFile(source: => Source): ZIO[Any, String, String] = {
+        def readFile(source: Source): ZIO[Any, String, String] = {
           ZIO
             .attemptBlocking(source.mkString)
-            .mapError(err => s"Failed to read yaml from configuration file '$fileName': $err")
+            .mapError(err => ConfigLoaderErrors.fileReadError(fileName) + s" Error message: $err")
         }
 
         ZIO.acquireReleaseWith(openFile(fileName))(closeFile(_))(readFile(_))
       }
 
-      for {
-        yamlString <- loadResource(CONFIG_FILE)
+      def validator(appConfig: Config): Either[String, Config] = {
+        val errors = List(
+          appConfig.crawler.validate,
+          appConfig.scheduler.validate,
+          appConfig.websocket.validate,
+        ).collect { case Left(err) => err }
 
-        appConfig <- ZIO
+        errors match {
+          case Nil => Right(appConfig)
+          case _ =>
+            Left(errors.mkString(NEW_LINE_SEP))
+        }
+      }
+
+      def parseAndValidate(yamlString: String): ZIO[Any, String, Config] = {
+        ZIO
           .attempt(ConfigProvider.fromYamlString(yamlString).load(config))
           .flatten
-          .mapError(err =>
-            s"Failed to parse configuration in file '$CONFIG_FILE': ${err.getMessage}"
+          .mapError(err => ConfigLoaderErrors.parseError(CONFIG_FILE) + s": $err")
+          .flatMap(parsedConfig =>
+            ZIO
+              .fromEither(validator(parsedConfig))
+              .mapError(err => ConfigLoaderErrors.validationError(CONFIG_FILE) + s" $err")
           )
+      }
 
-        _ <- ZIO
-          .fromEither(appConfig.crawler.validate)
-          .mapError(err => s"Failed to validate crawler configuration in file '$CONFIG_FILE': $err")
-
-        _ <- ZIO
-          .fromEither(appConfig.scheduler.validate)
-          .mapError(err =>
-            s"Failed to validate scheduler configuration in file '$CONFIG_FILE': $err"
-          )
-
-        _ <- ZIO
-          .fromEither(appConfig.websocket.validate)
-          .mapError(err =>
-            s"Failed to validate websocket configuration in file '$CONFIG_FILE': $err"
-          )
-      } yield appConfig
+      for {
+        yamlString  <- loadResource(CONFIG_FILE)
+        finalConfig <- parseAndValidate(yamlString)
+      } yield finalConfig
     }
   }
 

@@ -3,11 +3,10 @@ package blogblitz
 import zio._
 import zio.test._
 import zio.test.Assertion._
-import BlogBlitzConfig.{Host, ApiPath, PerPage, CrawlerConfig}
+import BlogBlitzConfig.{ Host, ApiPath, PerPage, CrawlerConfig }
 import zio.logging.backend.SLF4J
 
 object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
-
   def spec = suite("BlogBlitzConfigLayerSpec")(
     test("makeLayer successfully loads test configuration file") {
       val layer = BlogBlitzConfig.makeLayer("test")
@@ -16,7 +15,7 @@ object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
           assertTrue(
             config.host.value.nonEmpty,
             config.apiPath.value.nonEmpty,
-            config.perPage.value > 0
+            config.perPage.value > 0,
           )
         }
         .provide(layer.project(_.crawler))
@@ -48,7 +47,12 @@ object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
         BlogBlitzConfig.makeLayer("invalid").build.exit
       )(
         fails(
-          containsString("http") && containsString("100")
+          containsString("host")
+          && containsString("perPage")
+          && containsString("startDateGmt")
+          && containsString("maxCoolDownScale")
+          && containsString("port")
+          && containsString("subscribePath")
         )
       )
     },
@@ -57,13 +61,14 @@ object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
         BlogBlitzConfig.makeLayer("invalid-websocket").build.exit
       )(
         fails(
-          containsString("88080") && 
+          containsString("88080") &&
           containsString("must contain '${port}' placeholder")
         )
       )
-    }
+    },
   ).provide(
     Scope.default,
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
   )
+
 }

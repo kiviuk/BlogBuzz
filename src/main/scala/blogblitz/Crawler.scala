@@ -8,8 +8,10 @@ import blogblitz.WordPressApi.*
 
 import zio.http.{ Response, Status }
 
-// Crawler that fetches blog posts from a WordPress site and publishes them to a WebSocket server.
+// Crawler that fetches blog posts from a WordPress site and
+// publishes them to a hub connected to a WebSocket server endpoint.
 // Uses pagination to fetch posts.
+//
 // Pages are fetched concurrently.
 // https://developer.wordpress.org/rest-api/reference/posts/
 // https://developer.wordpress.org/rest-api/using-the-rest-api/pagination/
@@ -45,7 +47,7 @@ object Crawler {
       }
 
     def fetchAndPublishPostsSinceGmt(
-      sinceTimestamp: Instant,
+      sinceTimestampGmt: Instant,
       publishingBlogPostHub: Hub[WordPressApi.BlogPost],
       page: Int = FIRST_PAGE,
     ): ZIO[Client & CrawlerConfig, Throwable, List[BlogPost]] = {
@@ -54,11 +56,11 @@ object Crawler {
         baseClient <- ZIO.service[Client]
         config     <- ZIO.service[CrawlerConfig]
 
+        client = baseClient.batched
+
         baseUrl <- ZIO
           .fromEither(URL.decode(config.host.value))
           .mapError(new RuntimeException(_))
-
-        client = baseClient.batched
 
         // Construct the full URL with the path and query parameters
         // Note 1: Strict ordering loses significance for parallel page requests
@@ -68,8 +70,8 @@ object Crawler {
         // [depending on the implementation of the API (>= or >). But WordPress API is >]
         url = createUrl(baseUrl, config.apiPath.value)
           .addQueryParam(PER_PAGE, config.perPage.toString)
-          .addQueryParam(AFTER, sinceTimestamp.toString)
-          .addQueryParam(MODIFIED_AFTER, sinceTimestamp.toString)
+          .addQueryParam(AFTER, sinceTimestampGmt.toString)
+          .addQueryParam(MODIFIED_AFTER, sinceTimestampGmt.toString)
           .addQueryParam(ORDERBY, ORDER_BY_DATE)
           .addQueryParam(ORDER, ASC)
           .addQueryParam(PAGE, page.toString)
@@ -87,8 +89,8 @@ object Crawler {
                             |URL: $url
                             |Parameters:
                             | - $PER_PAGE: ${config.perPage}
-                            | - $AFTER: $sinceTimestamp
-                            | - $MODIFIED_AFTER: $sinceTimestamp
+                            | - $AFTER: $sinceTimestampGmt
+                            | - $MODIFIED_AFTER: $sinceTimestampGmt
                             | - $ORDERBY: $ORDER_BY_DATE
                             | - $ORDER: $ASC
                             | - $PAGE: $page
@@ -125,7 +127,7 @@ object Crawler {
             // Start fetching remaining pages recursively on separate fibers
             ZIO
               .foreachPar(FIRST_PAGE + 1 to totalPages) { p =>
-                fetchAndPublishPostsSinceGmt(sinceTimestamp, publishingBlogPostHub, p)
+                fetchAndPublishPostsSinceGmt(sinceTimestampGmt, publishingBlogPostHub, p)
               }
               .fork // good luck
           else
