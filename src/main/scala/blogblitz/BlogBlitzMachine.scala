@@ -72,11 +72,12 @@ object BlogBlitzMachine extends ZIOAppDefault {
       Option(segments._1).getOrElse("").trim,
       Option(segments._2).getOrElse("").trim,
     )
-    (cleanSegments._1, cleanSegments._2) match
+    (cleanSegments._1, cleanSegments._2) match {
       case ("", "") | (_, "") | ("", _) =>
         INVALID_ROUTE
       case (segment, apiVersion) =>
         Method.GET / segment / apiVersion
+    }
   }
 
   // Extracts path segments from the configuration
@@ -98,7 +99,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     blogPostHub: Hub[WordPressApi.BlogPost],
   ): Routes[Any, Response] = {
 
-    val routes = getPathSegments(config.subscribePath.value) match
+    val routes = getPathSegments(config.subscribePath.value) match {
       case Some((segment, apiVersion)) =>
         Routes(
           makeSocketRoute((segment, apiVersion)) -> handler(
@@ -109,6 +110,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
         throw new IllegalArgumentException(
           s"Invalid subscribe path: ${config.subscribePath.value}"
         )
+    }
 
     // e.g.: serve http://host:port/static/blogbuzz.html from resources/webapp
     (routes @@ Middleware.serveResources(STATIC_URL_PATH, RESOURCES_WEBAPP_PATH)).sandbox
@@ -192,68 +194,66 @@ object BlogBlitzMachine extends ZIOAppDefault {
     import WordPressApi.BlogPost
     import CrawlerMeta._
 
-    (for
+    (for event <- queue.take
 
-      event <- queue.take
+    _ <- ZIO.logInfo(
+      s"Processing next timestamp event: ${event.sinceTimestampGmt}"
+    )
 
-      _ <- ZIO.logInfo(
-        s"Processing next timestamp event: ${event.sinceTimestampGmt}"
+    // Turn on crawling mode (so others will know when crawling is in progress)
+    _ <- crawlMetaData.activateCrawling
+
+    // Delegate work to the CrawlerService
+    posts <- crawlerService
+      .fetchAndPublishPostsSinceGmt(
+        event.sinceTimestampGmt,
+        publishingBlogPostHub,
+      )
+      .foldZIO(
+        error =>
+          ZIO
+            .logError(
+              s"WordPress fetch failed: $error for event: ${event.sinceTimestampGmt}"
+            ) *>
+            crawlMetaData
+              .setPreviousCrawlState(PreviousCrawlState.Failure)
+              .as(List.empty[BlogPost]),
+        posts =>
+          (if (posts.isEmpty)
+             crawlMetaData.setPreviousCrawlState(PreviousCrawlState.Empty)
+           else
+             crawlMetaData.setPreviousCrawlState(
+               PreviousCrawlState.Successful
+             )).as(posts),
       )
 
-      // Turn on crawling mode (so others will know when crawling is in progress)
-      _ <- crawlMetaData.activateCrawling
+    _ <- ZIO.logInfo(
+      s"Received ${posts.size} blog posts for event: ${event.sinceTimestampGmt}"
+    )
 
-      // Delegate work to the CrawlerService
-      posts <- crawlerService
-        .fetchAndPublishPostsSinceGmt(
-          event.sinceTimestampGmt,
-          publishingBlogPostHub,
+    previousCrawlState <- crawlMetaData.getPreviousCrawlState
+
+    _ <- ZIO.when(CrawlStateEvaluator.unsuccessful(previousCrawlState))(
+      publishingBlogPostHub.publish(WordPressApi.pingPost()) *>
+        ZIO.logInfo(
+          s"Sending ping post instead of unsuccessful crawl for event: ${event.sinceTimestampGmt}"
         )
-        .foldZIO(
-          error =>
-            ZIO
-              .logError(
-                s"WordPress fetch failed: $error for event: ${event.sinceTimestampGmt}"
-              ) *>
-              crawlMetaData
-                .setPreviousCrawlState(PreviousCrawlState.Failure)
-                .as(List.empty[BlogPost]),
-          posts =>
-            (if (posts.isEmpty)
-               crawlMetaData.setPreviousCrawlState(PreviousCrawlState.Empty)
-             else
-               crawlMetaData.setPreviousCrawlState(
-                 PreviousCrawlState.Successful
-               )).as(posts),
-        )
+    )
 
-      _ <- ZIO.logInfo(
-        s"Received ${posts.size} blog posts for event: ${event.sinceTimestampGmt}"
-      )
+    // At this point, the crawler has collected all
+    // blog posts for the given timestamp,
+    // the most recent determines the next event timestamp
+    lastModifiedGmt = posts
+      .map(_.modifiedDateGmt.value)
+      .maxOption
+      .getOrElse(event.sinceTimestampGmt)
 
-      previousCrawlState <- crawlMetaData.getPreviousCrawlState
-
-      _ <- ZIO.when(CrawlStateEvaluator.unsuccessful(previousCrawlState))(
-        publishingBlogPostHub.publish(WordPressApi.pingPost()) *>
-          ZIO.logInfo(
-            s"Sending ping post instead of unsuccessful crawl for event: ${event.sinceTimestampGmt}"
-          )
-      )
-
-      // At this point, the crawler has collected all
-      // blog posts for the given timestamp,
-      // the most recent determines the next event timestamp
-      lastModifiedGmt = posts
-        .map(_.modifiedDateGmt.value)
-        .maxOption
-        .getOrElse(event.sinceTimestampGmt)
-
-      // Update crawl statuses
-      _ <- crawlMetaData.setLastModifiedGmt(lastModifiedGmt)
-      _ <- crawlMetaData.deactivateCrawling
-      _ <- ZIO.logInfo(
-        s"Tracking 'most recent blog post': $lastModifiedGmt"
-      )
+    // Update crawl statuses
+    _ <- crawlMetaData.setLastModifiedGmt(lastModifiedGmt)
+    _ <- crawlMetaData.deactivateCrawling
+    _ <- ZIO.logInfo(
+      s"Tracking 'most recent blog post': $lastModifiedGmt"
+    )
     yield ()).forever
   }
 

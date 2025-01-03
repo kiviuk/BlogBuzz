@@ -9,7 +9,7 @@ import zio.http.netty.server.NettyDriver
 import java.time.Instant
 import zio.logging.backend.SLF4J
 import Crawler.WordPressCrawler.*
-object CrawlerSpec extends ZIOSpecDefault:
+object CrawlerSpec extends ZIOSpecDefault {
   val QUEUE_CAPACITY = 256
   // Sample JSON response that mimics WordPress API response
   val sampleBlogPosts =
@@ -73,36 +73,35 @@ object CrawlerSpec extends ZIOSpecDefault:
     ),
     suite("fetchPostsSinceGmt")(
       test("skips invalid JSON response") {
-        for
-          port <- ZIO.serviceWithZIO[Server](_.port)
+        for port <- ZIO.serviceWithZIO[Server](_.port)
 
-          // add test routes that mimic WordPress API
-          _ <- TestServer.addRoutes {
-            Routes(
-              Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
-                Response
-                  .json(invalidBlogPosts)
-                  .addHeader(Header.ContentType(MediaType.application.json))
-                  .addHeader(Header.Custom("X-WP-TotalPages", "2"))
-              }
-            )
-          }
-
-          crawlerTestConfig = CrawlerConfig(
-            host = Host(s"http://localhost:$port"),
-            apiPath = ApiPath("wp-json/wp/v2/posts"),
-            perPage = PerPage(10),
+        // add test routes that mimic WordPress API
+        _ <- TestServer.addRoutes {
+          Routes(
+            Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
+              Response
+                .json(invalidBlogPosts)
+                .addHeader(Header.ContentType(MediaType.application.json))
+                .addHeader(Header.Custom("X-WP-TotalPages", "2"))
+            }
           )
+        }
 
-          hub  <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
-          post <- hub.subscribe
+        crawlerTestConfig = CrawlerConfig(
+          host = Host(s"http://localhost:$port"),
+          apiPath = ApiPath("wp-json/wp/v2/posts"),
+          perPage = PerPage(10),
+        )
 
-          posts <- Crawler
-            .WordPressCrawler
-            .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-            .provideSome(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
+        hub  <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
+        post <- hub.subscribe
 
-          hubSize <- post.size
+        posts <- Crawler
+          .WordPressCrawler
+          .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
+          .provideSome(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
+
+        hubSize <- post.size
         yield assertTrue(
           posts.length == 0,
           hubSize == posts.length,
@@ -152,36 +151,35 @@ object CrawlerSpec extends ZIOSpecDefault:
         )
       },
       test("successfully fetches and parses blog posts") {
-        for
-          port <- ZIO.serviceWithZIO[Server](_.port)
+        for port <- ZIO.serviceWithZIO[Server](_.port)
 
-          // add test routes that mimic WordPress API
-          _ <- TestServer.addRoutes {
-            Routes(
-              Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
-                Response
-                  .json(sampleBlogPosts)
-                  .addHeader(Header.ContentType(MediaType.application.json))
-                  .addHeader(Header.Custom("X-WP-TotalPages", "1"))
-              }
-            )
-          }
-
-          crawlerTestConfig = CrawlerConfig(
-            host = Host(s"http://localhost:$port"),
-            apiPath = ApiPath("wp-json/wp/v2/posts"),
-            perPage = PerPage(10),
+        // add test routes that mimic WordPress API
+        _ <- TestServer.addRoutes {
+          Routes(
+            Method.GET / "wp-json" / "wp" / "v2" / "posts" -> handler {
+              Response
+                .json(sampleBlogPosts)
+                .addHeader(Header.ContentType(MediaType.application.json))
+                .addHeader(Header.Custom("X-WP-TotalPages", "1"))
+            }
           )
+        }
 
-          hub  <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
-          post <- hub.subscribe
+        crawlerTestConfig = CrawlerConfig(
+          host = Host(s"http://localhost:$port"),
+          apiPath = ApiPath("wp-json/wp/v2/posts"),
+          perPage = PerPage(10),
+        )
 
-          posts <- Crawler
-            .WordPressCrawler
-            .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
-            .provideSome(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
+        hub  <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
+        post <- hub.subscribe
 
-          hubSize <- post.size
+        posts <- Crawler
+          .WordPressCrawler
+          .fetchAndPublishPostsSinceGmt(Instant.parse("2023-01-01T00:00:00Z"), hub)
+          .provideSome(ZLayer.succeed(crawlerTestConfig) ++ Client.default)
+
+        hubSize <- post.size
         yield assertTrue(
           posts.length == 2,
           hubSize == 2,
@@ -200,3 +198,5 @@ object CrawlerSpec extends ZIOSpecDefault:
       Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
     ),
   )
+
+}

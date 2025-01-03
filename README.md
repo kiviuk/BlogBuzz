@@ -125,4 +125,10 @@ blog posts to connected clients.
     - Dockerization and cloud readiness.
     - Streaming
     - Observability / Metrics
-    - Support schema evolution (v1 -> v2) using ZIO Schema
+    - Support schema evolution (v1 -> v2) using ZIO Schema.
+    - Support for multiple WordPress sites.
+    - Support fully functional local network mock server for testing and development.
+    - Make the actual parsing of the crawled data a separate service to separate
+      crawling from data ingestion.
+    - Make logging dynamic and configurable at runtime.
+    - Cache posts in memory for faster retrieval to serve new clients.

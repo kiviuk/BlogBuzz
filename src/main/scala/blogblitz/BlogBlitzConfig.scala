@@ -12,7 +12,7 @@ import scala.io.Source
 // TODO: use
 // https://zio.github.io/zio-prelude/docs/functionaldatatypes/validation
 // https://github.com/lightbend/config
-object BlogBlitzConfig:
+object BlogBlitzConfig {
   private val ENV_VAR         = "APP_ENV"
   private val DEV_ENV         = "dev"
   private val TEST_ENV        = "test"
@@ -182,18 +182,21 @@ object BlogBlitzConfig:
 
     object ConfigLoaderErrors {
 
-      val fileNotFound: String => String = fileName =>
+      val fileNotFound: String => String = { fileName =>
         s"Configuration file '$fileName' not found for environment: $env. " +
           s"Did you forget to set environment variable '$ENV_VAR' to 'dev', 'test' or 'prod'?"
+      }
+      val fileReadError: String => String = { fileName =>
+        s"Failed to read yaml from configuration file '$fileName'."
+      }
 
-      val fileReadError: String => String =
-        fileName => s"Failed to read yaml from configuration file '$fileName'."
+      val parseError: String => String = { fileName =>
+        s"Failed to parse configuration in file '$fileName'"
+      }
 
-      val parseError: String => String =
-        fileName => s"Failed to parse configuration in file '$fileName'"
-
-      val validationError: String => String =
-        fileName => s"Configuration validation failed for file '$fileName'"
+      val validationError: String => String = { fileName =>
+        s"Configuration validation failed for file '$fileName'"
+      }
 
     }
 
@@ -267,3 +270,5 @@ object BlogBlitzConfig:
   val crawlerLayer: ZLayer[Any, Path, CrawlerConfig]     = layer.project(_.crawler)
   val schedulerLayer: ZLayer[Any, Path, SchedulerConfig] = layer.project(_.scheduler)
   val websocketLayer: ZLayer[Any, Path, WebSocketConfig] = layer.project(_.websocket)
+
+}

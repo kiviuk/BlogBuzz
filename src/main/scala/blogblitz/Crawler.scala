@@ -39,12 +39,13 @@ object Crawler {
   object WordPressCrawler {
     import BlogBlitzConfig.*
 
-    def createUrl(base: URL, path: String): URL =
+    def createUrl(base: URL, path: String): URL = {
       val pathSegments = path.split(PATH_SPLITTER).filter(_.nonEmpty)
 
       pathSegments.foldLeft(base) { (url, segment) =>
         url / segment
       }
+    }
 
     def fetchAndPublishPostsSinceGmt(
       sinceTimestampGmt: Instant,
@@ -123,13 +124,11 @@ object Crawler {
 
         // Fetch posts from other pages concurrently if applicable
         otherPagePostsFiber <-
-          if page == FIRST_PAGE && totalPages > FIRST_PAGE then
+          if (page == FIRST_PAGE && totalPages > FIRST_PAGE) then
             // Start fetching remaining pages recursively on separate fibers
-            ZIO
-              .foreachPar(FIRST_PAGE + 1 to totalPages) { p =>
-                fetchAndPublishPostsSinceGmt(sinceTimestampGmt, publishingBlogPostHub, p)
-              }
-              .fork // good luck
+            ZIO.foreachPar(FIRST_PAGE + 1 to totalPages)(p =>
+              fetchAndPublishPostsSinceGmt(sinceTimestampGmt, publishingBlogPostHub, p)
+            ).fork // good luck
           else
             ZIO.succeed(
               Fiber.succeed(List.empty[List[BlogPost]].toIndexedSeq)

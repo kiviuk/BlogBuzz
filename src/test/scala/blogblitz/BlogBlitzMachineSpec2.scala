@@ -7,7 +7,7 @@ import java.time.Instant
 import blogblitz.BlogBlitzConfig.CrawlerConfig
 import zio.logging.backend.SLF4J
 // Part 2
-object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
+object BlogBlitzMachineSpec2 extends ZIOSpecDefault {
   java
     .lang
     .System
@@ -163,3 +163,6 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault:
     Scope.default,
     Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
   )
+
+}
+

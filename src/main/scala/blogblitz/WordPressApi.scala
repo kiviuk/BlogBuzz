@@ -13,7 +13,7 @@ object WordPressApi {
   implicit val instantGmtDecoder: JsonDecoder[Instant] = {
     JsonDecoder[String].mapOrFail { str =>
       // Append 'Z' to match ISO-8601
-      val isoStr = if str.endsWith("Z") then str else s"${str}Z"
+      val isoStr = if (str.endsWith("Z")) then str else s"${str}Z"
       try Right(Instant.parse(isoStr))
       catch {
         case ex: Exception => Left(s"Failed to parse Instant: $ex")

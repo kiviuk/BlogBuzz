@@ -66,10 +66,9 @@ object CrawlerMeta {
 
   val layer: ZLayer[BlogBlitzConfig.SchedulerConfig, Nothing, CrawlMetaDataService] = {
     ZLayer.fromZIO(
-      for
-        schedulerConfig    <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
-        crawlStateRef      <- Ref.make[CrawlState](CrawlState())
-        lastModifiedGmtRef <- Ref.make[Instant](schedulerConfig.startDateGmt)
+      for schedulerConfig <- ZIO.service[BlogBlitzConfig.SchedulerConfig]
+      crawlStateRef       <- Ref.make[CrawlState](CrawlState())
+      lastModifiedGmtRef  <- Ref.make[Instant](schedulerConfig.startDateGmt)
       yield new CrawlMetaDataRepository(
         crawlStateRef,
         lastModifiedGmtRef,
@@ -78,4 +77,3 @@ object CrawlerMeta {
   }
 
 }
-

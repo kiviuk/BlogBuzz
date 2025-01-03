@@ -6,7 +6,7 @@ import zio.http.*
 import zio.logging.backend.SLF4J
 import java.time.Instant
 // Part 1
-object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
+object BlogBlitzMachineSpec1 extends ZIOSpecDefault {
   private val QUEUE_CAPACITY = 256
 
   private val TestTimeout       = 10.seconds
@@ -188,3 +188,5 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault:
     BlogBlitzConfig.schedulerLayer,
     Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
   )
+
+}

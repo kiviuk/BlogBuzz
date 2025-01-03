@@ -11,7 +11,12 @@ val zioHttpVersion   = "3.0.1"
 val zioConfigVersion = "4.0.2"
 
 scalacOptions ++= Seq(
-  "-Wunused:all"
+  "-Wunused:all",
+  "-Xmax-inlines",
+  "128",
+  "-no-indent",
+  // "-old-syntax",
+  "-Werror", // https://www.reddit.com/r/scala/comments/1hsj6sv/rant_on_scala3_tooling_intellijmetals_wish_i/
 )
 
 // Reduce the number of forked JVMs for tests
