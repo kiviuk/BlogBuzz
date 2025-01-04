@@ -7,8 +7,8 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit._
 import zio.logging.backend.SLF4J
 
-object BlogPostMetaSpec extends ZIOSpecDefault {
-  def spec: Spec[Any, Any] = suite("BlogPostMetaSpec")(
+object CrawlerMetaSpec extends ZIOSpecDefault {
+  def spec: Spec[Any, Any] = suite("CrawlerMetaSpec")(
     suite("CrawlMetadata")(
       test("should start with epoch time and not crawling") {
         for {

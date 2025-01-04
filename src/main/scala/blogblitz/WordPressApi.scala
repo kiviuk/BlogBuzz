@@ -33,7 +33,7 @@ object WordPressApi {
   }
 
   // Inbound WordPress post
-  // Note on DDD: This is a dto not the actual domain object
+  // Note on DDD: This is a wire model not the actual domain object
   case class BlogPost(
     // The title of the post.
     title: Title,
