@@ -201,6 +201,8 @@ object BlogBlitzMachine extends ZIOAppDefault {
     )
 
     // Turn on crawling mode (so others will know when crawling is in progress)
+    // but: Instead of being able to reason about your program locally,
+    // we have to consider the program holistically.Timing, etc.
     _ <- crawlMetaData.activateCrawling
 
     // Delegate work to the CrawlerService

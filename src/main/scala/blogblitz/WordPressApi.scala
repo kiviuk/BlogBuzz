@@ -133,7 +133,7 @@ object WordPressApi {
       val words = blogPost
         .content
         .rendered
-        .split("\\s+") // simple split by whitespace, won't handle any special characters
+        .split("\\W+") // simple split on words
         .map(_.toLowerCase)
         .filter(_.nonEmpty)
 

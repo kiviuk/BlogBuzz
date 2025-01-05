@@ -90,14 +90,14 @@ object WordPressApiSpec extends ZIOSpecDefault {
               requestUrl = "https://example.com?per_page=10&after=...",
               wordCountMap = Some(
                 Seq(
-                  "a"        -> 2,
-                  "this"     -> 1,
-                  "is"       -> 1,
-                  "content." -> 1,
-                  "post"     -> 1,
-                  "test"     -> 1,
-                  "few"      -> 1,
-                  "with"     -> 1,
+                  "a"       -> 2,
+                  "this"    -> 1,
+                  "is"      -> 1,
+                  "content" -> 1,
+                  "post"    -> 1,
+                  "test"    -> 1,
+                  "few"     -> 1,
+                  "with"    -> 1,
                 )
               ),
             )
@@ -125,14 +125,14 @@ object WordPressApiSpec extends ZIOSpecDefault {
               requestUrl = "https://example.com?per_page=10&after=...",
               wordCountMap = Some(
                 Seq(
-                  "a"        -> 2,
-                  "this"     -> 1,
-                  "is"       -> 1,
-                  "content." -> 1,
-                  "post"     -> 1,
-                  "test"     -> 1,
-                  "few"      -> 1,
-                  "with"     -> 1,
+                  "a"       -> 2,
+                  "this"    -> 1,
+                  "is"      -> 1,
+                  "content" -> 1,
+                  "post"    -> 1,
+                  "test"    -> 1,
+                  "few"     -> 1,
+                  "with"    -> 1,
                 )
               ),
             )

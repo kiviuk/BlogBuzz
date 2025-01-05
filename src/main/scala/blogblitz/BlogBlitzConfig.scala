@@ -25,31 +25,31 @@ object BlogBlitzConfig {
 
   opaque type Host = String
   object Host {
-    def apply(value: String): Host        = value
+    inline def apply(value: String): Host        = value
     extension (h: Host) def value: String = h
 
   }
   opaque type ApiPath = String
   object ApiPath {
-    def apply(value: String): ApiPath        = value
+    inline def apply(value: String): ApiPath        = value
     extension (a: ApiPath) def value: String = a
 
   }
   opaque type PerPage = Int
   object PerPage {
-    def apply(value: Int): PerPage        = value
+    inline def apply(value: Int): PerPage        = value
     extension (p: PerPage) def value: Int = p
 
   }
   opaque type Port = Int
   object Port {
-    def apply(value: Int): Port        = value
+    inline def apply(value: Int): Port        = value
     extension (p: Port) def value: Int = p
 
   }
   opaque type Path = String
   object Path {
-    def apply(value: String): Path        = value
+    inline def apply(value: String): Path        = value
     extension (p: Path) def value: String = p
 
   }
