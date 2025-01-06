@@ -6,7 +6,7 @@ inThisBuild(
   )
 )
 
-val zioVersion       = "2.1.9"
+val zioVersion       = "2.1.14"
 val zioHttpVersion   = "3.0.1"
 val zioConfigVersion = "4.0.2"
 
