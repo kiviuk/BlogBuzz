@@ -38,9 +38,7 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio-http" % zioHttpVersion,
 
       // LOGGING
-      "dev.zio"       %% "zio-logging"       % zioLoggingVersion,
-      "dev.zio"       %% "zio-logging-slf4j" % zioLoggingVersion,
-      "ch.qos.logback" % "logback-classic"   % "1.5.16",
+      "dev.zio" %% "zio-logging" % zioLoggingVersion,
 
       // CONFIGURATION
       "dev.zio" %% "zio-config"          % zioConfigVersion,
