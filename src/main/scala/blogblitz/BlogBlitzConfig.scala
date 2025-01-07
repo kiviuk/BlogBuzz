@@ -54,7 +54,7 @@ object BlogBlitzConfig {
     perPage: PerPage) {
     object CrawlerConfigErrors {
       val InvalidPerPage = (perPage: String) =>
-        s"WordPress API: p: '$perPage' must be between 1 (inclusive) and ${WordPressApi.MAX_PER_PAGE_BY_WP} (inclusive)"
+        s"WordPress API: perPage: '$perPage' must be between 1 (inclusive) and ${WordPressApi.MAX_PER_PAGE_BY_WP} (inclusive)"
 
       val InvalidHost = (host: String) => s"WordPress API: host '$host' must start with http"
 

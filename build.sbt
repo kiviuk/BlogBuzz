@@ -6,9 +6,10 @@ inThisBuild(
   )
 )
 
-val zioVersion       = "2.1.14"
-val zioHttpVersion   = "3.0.1"
-val zioConfigVersion = "4.0.2"
+val zioVersion        = "2.1.14"
+val zioHttpVersion    = "3.0.1"
+val zioConfigVersion  = "4.0.3"
+val zioLoggingVersion = "2.4.0"
 
 scalacOptions ++= Seq(
   "-Wunused:all",
@@ -37,9 +38,9 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio-http" % zioHttpVersion,
 
       // LOGGING
-      "dev.zio"       %% "zio-logging"       % zioVersion,
-      "dev.zio"       %% "zio-logging-slf4j" % zioVersion,
-      "ch.qos.logback" % "logback-classic"   % "1.2.11",
+      "dev.zio"       %% "zio-logging"       % zioLoggingVersion,
+      "dev.zio"       %% "zio-logging-slf4j" % zioLoggingVersion,
+      "ch.qos.logback" % "logback-classic"   % "1.5.16",
 
       // CONFIGURATION
       "dev.zio" %% "zio-config"          % zioConfigVersion,
@@ -119,3 +120,4 @@ withCls(
     " scalafix NoAutoTupling;" +
     " scalafix LeakingImplicitClassVal;",
 )
+

@@ -3,7 +3,6 @@ package blogblitz
 import zio.*
 import zio.http.ChannelEvent.Read
 import zio.http.*
-import zio.logging.backend.SLF4J
 import zio.stream.ZStream
 
 import java.time.Instant
@@ -270,15 +269,10 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
   }
 
-  override val bootstrap: ZLayer[ZIOAppArgs, Any, Unit] =
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+  override val bootstrap = Logging.consoleJsonLoggerʹ
 
   override def run: URIO[Any, ExitCode] = {
 
-    // TODO: automatically wait for some websocket client to connect before running the crawler?
-    // and stop crawler if no client is connected
-    // https://zio.dev/zio-http/examples/websocket/
-    // https://github.com/scala-steward/zio-http/blob/d0c229d0beb857075e98597fbadbd33d4f07a917/zio-http-testkit/src/test/scala/zio/http/SocketContractSpec.scala#L142
     val program = for {
       timestampQueue  <- Queue.bounded[TimestampEvent](QUEUE_CAPACITY)
       blogPostHub     <- Hub.bounded[WordPressApi.BlogPost](QUEUE_CAPACITY)
@@ -340,5 +334,10 @@ object BlogBlitzMachine extends ZIOAppDefault {
       }
       .exitCode
   }
+  // TODO: automatically wait for some websocket client to connect before running the crawler?
+  // and stop crawler if no client is connected
+  // https://zio.dev/zio-http/examples/websocket/
+  // https://github.com/scala-steward/zio-http/blob/d0c229d0beb857075e98597fbadbd33d4f07a917/zio-http-testkit/src/test/scala/zio/http/SocketContractSpec.scala#L142
 
 }
+

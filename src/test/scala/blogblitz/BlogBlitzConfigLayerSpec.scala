@@ -4,7 +4,6 @@ import zio._
 import zio.test._
 import zio.test.Assertion._
 import BlogBlitzConfig.{ PerPage, CrawlerConfig }
-import zio.logging.backend.SLF4J
 
 object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
   def spec = suite("BlogBlitzConfigLayerSpec")(
@@ -68,7 +67,7 @@ object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
     },
   ).provide(
     Scope.default,
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
+    Logging.consoleJsonLoggerʹ,
   )
 
 }

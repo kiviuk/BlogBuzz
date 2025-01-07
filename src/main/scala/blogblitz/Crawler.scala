@@ -84,7 +84,7 @@ object Crawler {
           .addQueryParam(ORDER, ASC)
           .addQueryParam(PAGE, page.toString)
 
-        _ <- ZIO.logInfo(s"Crawler Url: $url")
+        _ <- ZIO.logDebug(s"Crawler Url: $url")
 
         req = Request(
           method = Method.GET,
@@ -156,8 +156,8 @@ object Crawler {
         // Extract html
         html <- response.body.asString
 
-        _ <- ZIO.logInfo(s"Page: $page")
-        _ <- ZIO.logInfo(s"Total Pages: $totalPages")
+        _ <- ZIO.logDebug(s"Page: $page")
+        _ <- ZIO.logDebug(s"Total Pages: $totalPages")
         _ <- ZIO.logDebug(html)
 
         // Parse posts from JSON response, skipping invalid posts
@@ -184,7 +184,7 @@ object Crawler {
             )
         }
 
-        _ <- ZIO.logInfo(s"Crawler: processed ${updatedPosts.size} posts")
+        _ <- ZIO.logDebug(s"Crawler: processed ${updatedPosts.size} posts")
 
         otherPagePosts <- otherPagePostsFiber.join
       } yield updatedPosts ++ otherPagePosts.flatten
