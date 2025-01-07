@@ -3,7 +3,7 @@ package blogblitz
 import zio._
 import zio.test._
 import zio.test.Assertion._
-import BlogBlitzConfig.{ Host, ApiPath, PerPage, CrawlerConfig }
+import BlogBlitzConfig.{ PerPage, CrawlerConfig }
 import zio.logging.backend.SLF4J
 
 object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
@@ -13,9 +13,9 @@ object BlogBlitzConfigLayerSpec extends ZIOSpecDefault {
       ZIO
         .serviceWith[CrawlerConfig] { config =>
           assertTrue(
-            config.host.value.nonEmpty,
-            config.apiPath.value.nonEmpty,
-            config.perPage.value > 0,
+            config.host.nonEmpty,
+            config.apiPath.nonEmpty,
+            config.perPage > 0,
           )
         }
         .provide(layer.project(_.crawler))

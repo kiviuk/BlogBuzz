@@ -104,7 +104,7 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault {
           !initialCrawling,
           !finalCrawling,
           post.title.rendered == "Test Blog Post",
-          post.modifiedDateGmt.value.isAfter(sinceTimestampGmt),
+          post.modifiedDateGmt.isAfter(sinceTimestampGmt),
           post.importDateTime.isAfter(sinceTimestampGmt),
           lastModifiedGmt.equals(sinceTimestampGmt.plus(1.days)),
         )
@@ -165,4 +165,3 @@ object BlogBlitzMachineSpec2 extends ZIOSpecDefault {
   )
 
 }
-

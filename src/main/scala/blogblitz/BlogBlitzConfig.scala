@@ -1,6 +1,5 @@
 package blogblitz
 
-import blogblitz.BlogBlitzConfig.ApiPath.value
 import zio.*
 import zio.config.magnolia.*
 import zio.config.magnolia.deriveConfig
@@ -23,34 +22,30 @@ object BlogBlitzConfig {
   private val MAX_PORT        = 65535
   private val ONE_HOUR_IN_SEC = 60 * 60
 
-  opaque type Host = String
+  // https://xebia.com/blog/generic-refinement-types-in-scala-3/
+  opaque type Host <: String = String
   object Host {
-    inline def apply(value: String): Host        = value
-    extension (h: Host) def value: String = h
+    inline def apply(value: String): Host = value
 
   }
-  opaque type ApiPath = String
+  opaque type ApiPath <: String = String
   object ApiPath {
-    inline def apply(value: String): ApiPath        = value
-    extension (a: ApiPath) def value: String = a
+    inline def apply(value: String): ApiPath = value
 
   }
-  opaque type PerPage = Int
+  opaque type PerPage <: Int = Int
   object PerPage {
-    inline def apply(value: Int): PerPage        = value
-    extension (p: PerPage) def value: Int = p
+    inline def apply(value: Int): PerPage = value
 
   }
-  opaque type Port = Int
+  opaque type Port <: Int = Int
   object Port {
-    inline def apply(value: Int): Port        = value
-    extension (p: Port) def value: Int = p
+    inline def apply(value: Int): Port = value
 
   }
-  opaque type Path = String
+  opaque type Path <: String = String
   object Path {
-    inline def apply(value: String): Path        = value
-    extension (p: Path) def value: String = p
+    inline def apply(value: String): Path = value
 
   }
   case class CrawlerConfig(
@@ -58,11 +53,10 @@ object BlogBlitzConfig {
     apiPath: ApiPath,
     perPage: PerPage) {
     object CrawlerConfigErrors {
-      val InvalidPerPage: String => String = perPage =>
-        s"WordPress API: perPage: '$perPage' must be between 1 (inclusive) and ${WordPressApi.MAX_PER_PAGE_BY_WP} (inclusive)"
+      val InvalidPerPage = (perPage: String) =>
+        s"WordPress API: p: '$perPage' must be between 1 (inclusive) and ${WordPressApi.MAX_PER_PAGE_BY_WP} (inclusive)"
 
-      val InvalidHost: String => String = host =>
-        s"WordPress API: host '$host' must start with http"
+      val InvalidHost = (host: String) => s"WordPress API: host '$host' must start with http"
 
     }
     def validate: Either[String, Unit] = {
@@ -156,7 +150,7 @@ object BlogBlitzConfig {
     def validate: Either[String, Unit] = {
       val invalidPortRange       = port < MIN_PORT || port > MAX_PORT
       val emptySubscribePath     = subscribePath.isEmpty
-      val missingPortPlaceholder = !subscribePath.value.contains("${port}")
+      val missingPortPlaceholder = !subscribePath.contains("${port}")
 
       val errors = List(
         if (invalidPortRange) Some(WebSocketConfigErrors.invalidPort(port)) else None,

@@ -66,7 +66,7 @@ object Crawler {
         // exceptions and recoverable errors should be tracked
         // unrecoverable errors should be thrown.
         baseUrl <- ZIO
-          .fromEither(URL.decode(config.host.value))
+          .fromEither(URL.decode(config.host))
           .mapError(new RuntimeException(_))
 
         // Construct the full URL with the path and query parameters
@@ -76,7 +76,7 @@ object Crawler {
         // Once as the youngest item from the previous batch and again as the oldest item in the current batch.
         // But better to eventually deduplicate data than to miss it.
         // [depending on the implementation of the API (>= or >). But WordPress API is >]
-        url = createUrl(baseUrl, config.apiPath.value)
+        url = createUrl(baseUrl, config.apiPath)
           .addQueryParam(PER_PAGE, config.perPage.toString)
           .addQueryParam(AFTER, sinceTimestampGmt.toString)
           .addQueryParam(MODIFIED_AFTER, sinceTimestampGmt.toString)
@@ -222,4 +222,3 @@ object CrawlerService {
     }
 
 }
-

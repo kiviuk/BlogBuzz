@@ -238,7 +238,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
         val configProvider = ConfigProvider.fromYamlString(validYaml)
         val result =
           configProvider.load(BlogBlitzConfig.config).map { config =>
-            config.websocket.subscribePath.value.replace("${port}", config.websocket.port.toString)
+            config.websocket.subscribePath.replace("${port}", config.websocket.port.toString)
           }
 
         assertZIO(result)(

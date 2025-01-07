@@ -13,7 +13,7 @@ object WordPressApi {
   implicit val instantGmtDecoder: JsonDecoder[Instant] = {
     JsonDecoder[String].mapOrFail { str =>
       // Append 'Z' to match ISO-8601
-      val isoStr = if (str.endsWith("Z")) then str else s"${str}Z"
+      val isoStr = if str.endsWith("Z") then str else s"${str}Z"
       try Right(Instant.parse(isoStr))
       catch {
         case ex: Exception => Left(s"Failed to parse Instant: $ex")
@@ -22,10 +22,10 @@ object WordPressApi {
   }
 
   // A unique type for GMT fields to distinguish them from local ones
-  opaque type GmtInstant = Instant
+  opaque type GmtInstant <: Instant = Instant
   object GmtInstant {
-    def apply(instant: Instant): GmtInstant        = instant
-    extension (gmt: GmtInstant) def value: Instant = gmt
+    def apply(instant: Instant): GmtInstant = instant
+    // extension (gmt: GmtInstant) def value: Instant = gmt
 
     implicit val decoder: JsonDecoder[GmtInstant] =
       instantGmtDecoder.map(GmtInstant(_))

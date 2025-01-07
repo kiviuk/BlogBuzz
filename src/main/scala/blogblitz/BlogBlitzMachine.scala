@@ -99,7 +99,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     blogPostHub: Hub[WordPressApi.BlogPost],
   ): Routes[Any, Response] = {
 
-    val routes = getPathSegments(config.subscribePath.value) match {
+    val routes = getPathSegments(config.subscribePath) match {
       case Some((segment, apiVersion)) =>
         Routes(
           makeSocketRoute((segment, apiVersion)) -> handler(
@@ -108,7 +108,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
         )
       case _ => // invalid path
         throw new IllegalArgumentException(
-          s"Invalid subscribe path: ${config.subscribePath.value}"
+          s"Invalid subscribe path: ${config.subscribePath}"
         )
     }
 
@@ -119,15 +119,15 @@ object BlogBlitzMachine extends ZIOAppDefault {
   // Starts the WebSocket server
   def startServer(config: WebSocketConfig, blogPostHub: Hub[WordPressApi.BlogPost])
     : ZIO[Any, Throwable, Nothing] = {
-    val serverConfig = Server.Config.default.port(config.port.value)
+    val serverConfig = Server.Config.default.port(config.port)
 
     for {
       _ <- ZIO.logInfo(
         s"WebSocket server ready at ${config.subscribePath}"
-          .replace("${port}", config.port.value.toString)
+          .replace("${port}", config.port.toString)
       )
       _ <- ZIO.logInfo(
-        s"HTTP server ready at http://localhost:${config.port.value}/static/blogbuzz.html"
+        s"HTTP server ready at http://localhost:${config.port}/static/blogbuzz.html"
       )
 
       fiber <- Server
@@ -246,7 +246,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     // blog posts for the given timestamp,
     // the most recent determines the next event timestamp
     lastModifiedGmt = posts
-      .map(_.modifiedDateGmt.value)
+      .map(_.modifiedDateGmt)
       .maxOption
       .getOrElse(event.sinceTimestampGmt)
 
@@ -296,7 +296,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
       serverFiber <- startServer(wsConfig, blogPostHub).fork
       _           <- ZIO.logInfo("WebSocket server is running")
       _ <- ZIO.logInfo(
-        s"Test: wscat -c ws://localhost:${wsConfig.port.value}/subscribe/v2"
+        s"Test: wscat -c ws://localhost:${wsConfig.port}/subscribe/v2"
       )
 
       _ <- ZIO.logInfo("Press ENTER to continue...and ENTER again to quit") *> Console.readLine
@@ -335,14 +335,8 @@ object BlogBlitzMachine extends ZIOAppDefault {
         Client.default,
       )
       .tapError {
-        case err: Throwable =>
+        case err: (Throwable | String) =>
           Console.printLineError(s"System failed with error: $err")
-        case err: String =>
-          Console.printLineError(s"System failed with error: $err")
-        case _ =>
-          Console.printLineError(
-            "System failed with unknown error. Please check logs for more details."
-          )
       }
       .exitCode
   }
