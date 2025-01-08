@@ -5,7 +5,6 @@ import zio.test.*
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit._
-import zio.logging.backend.SLF4J
 
 object CrawlerMetaSpec extends ZIOSpecDefault {
   def spec: Spec[Any, Any] = suite("CrawlerMetaSpec")(
@@ -96,7 +95,7 @@ object CrawlerMetaSpec extends ZIOSpecDefault {
   ).provide(
     CrawlerMeta.layer,
     BlogBlitzConfig.schedulerLayer,
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
+    Logging.consoleJsonLoggerʹ,
   )
 
 }

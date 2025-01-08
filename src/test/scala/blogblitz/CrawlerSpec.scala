@@ -7,7 +7,6 @@ import BlogBlitzConfig.{ Host, ApiPath, PerPage, CrawlerConfig }
 import zio.http.netty.NettyConfig
 import zio.http.netty.server.NettyDriver
 import java.time.Instant
-import zio.logging.backend.SLF4J
 import Crawler.WordPressCrawler.*
 object CrawlerSpec extends ZIOSpecDefault {
   val QUEUE_CAPACITY = 256
@@ -195,7 +194,7 @@ object CrawlerSpec extends ZIOSpecDefault {
       TestServer.layer,
       Scope.default,
       ZLayer.succeed(NettyConfig.defaultWithFastShutdown),
-      Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
+      Logging.consoleJsonLoggerʹ,
     ),
   )
 

@@ -145,6 +145,7 @@ object BlogBlitzMachine extends ZIOAppDefault {
     crawlMetaData: CrawlerMeta.CrawlMetaDataService,
     schedulerConfig: BlogBlitzConfig.SchedulerConfig,
   ): ZIO[Any, Nothing, Unit] = {
+    import CrawlStateEvaluator.*
 
     (for {
       // Keep the queue free from noise.
@@ -166,11 +167,14 @@ object BlogBlitzMachine extends ZIOAppDefault {
       previousCrawlState <- crawlMetaData.getPreviousCrawlState
 
       // back off strategy, better use ZIO scheduler?
-      lowEffortKindOfWorkingBackOffStrategy = CrawlStateEvaluator.unsuccessful(previousCrawlState)
+      lowEffortKindOfWorkingBackOffStrategy = CrawlStateEvaluator.backOffState(
+        previousCrawlState
+      ) == BackOff.Active
 
       maxCoolDownScale = schedulerConfig.maxCoolDownScale
-      cooldownScale    = if (lowEffortKindOfWorkingBackOffStrategy) maxCoolDownScale else 1
-      pauseDuration    = schedulerConfig.toDuration.multipliedBy(cooldownScale)
+      cooldownScale =
+        if (lowEffortKindOfWorkingBackOffStrategy) maxCoolDownScale else 1
+      pauseDuration = schedulerConfig.toDuration.multipliedBy(cooldownScale)
       _ <- ZIO.when(lowEffortKindOfWorkingBackOffStrategy)(
         ZIO.logInfo("Entering cooldown mode since no new data has been crawled.")
       )
@@ -191,7 +195,8 @@ object BlogBlitzMachine extends ZIOAppDefault {
     crawlerService: CrawlerService,
   ): ZIO[Client & CrawlerConfig, Nothing, Unit] = {
     import WordPressApi.BlogPost
-    import CrawlerMeta._
+    import CrawlerMeta.*
+    import CrawlStateEvaluator.*
 
     (for event <- queue.take
 
@@ -234,7 +239,9 @@ object BlogBlitzMachine extends ZIOAppDefault {
 
     previousCrawlState <- crawlMetaData.getPreviousCrawlState
 
-    _ <- ZIO.when(CrawlStateEvaluator.unsuccessful(previousCrawlState))(
+    backoff = CrawlStateEvaluator.backOffState(previousCrawlState)
+
+    _ <- ZIO.when(backoff == BackOff.Active)(
       publishingBlogPostHub.publish(WordPressApi.pingPost()) *>
         ZIO.logInfo(
           s"Sending ping post instead of unsuccessful crawl for event: ${event.sinceTimestampGmt}"
@@ -262,10 +269,18 @@ object BlogBlitzMachine extends ZIOAppDefault {
   private object CrawlStateEvaluator {
     import CrawlerMeta._
 
-    private def successful(state: PreviousCrawlState): Boolean =
-      state == PreviousCrawlState.Successful || state == PreviousCrawlState.NotYetCrawled
+    enum BackOff {
+      case Active, InActive
 
-    def unsuccessful(state: PreviousCrawlState): Boolean = !successful(state)
+    }
+
+    def backOffState(state: PreviousCrawlState) =
+      state match {
+        case PreviousCrawlState.Failure | PreviousCrawlState.Empty =>
+          BackOff.Active
+        case _ =>
+          BackOff.InActive
+      }
 
   }
 

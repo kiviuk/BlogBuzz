@@ -3,7 +3,6 @@ package blogblitz
 import zio.*
 import zio.test.*
 import zio.http.*
-import zio.logging.backend.SLF4J
 import java.time.Instant
 // Part 1
 object BlogBlitzMachineSpec1 extends ZIOSpecDefault {
@@ -186,7 +185,7 @@ object BlogBlitzMachineSpec1 extends ZIOSpecDefault {
     timestampHubLayer,
     CrawlerMeta.layer,
     BlogBlitzConfig.schedulerLayer,
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j,
+    Logging.consoleJsonLoggerʹ,
   )
 
 }

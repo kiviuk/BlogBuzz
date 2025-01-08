@@ -5,7 +5,6 @@ import zio.test._
 import zio.test.Assertion._
 import zio.config._
 import zio.config.yaml._
-import zio.logging.backend.SLF4J
 
 object BlogBlitzConfigSpec extends ZIOSpecDefault {
 
@@ -358,7 +357,7 @@ object BlogBlitzConfigSpec extends ZIOSpecDefault {
       },
     ),
   ).provide(
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+    Logging.consoleJsonLoggerʹ
   )
 
 }
